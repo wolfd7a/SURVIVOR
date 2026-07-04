@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nightfall Swarm</title>
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌙</text></svg>" />
+</head>
+<body>
+  <div id="frame">
+    <canvas id="game" width="960" height="600"></canvas>
+
+    <div id="overlay-menu" class="overlay">
+      <h1>NIGHTFALL SWARM</h1>
+      <p class="tagline">Survive the horde. Time the boss. Come back stronger.</p>
+      <div class="menu-stats">
+        <div><span id="stat-best-time">0:00</span><label>Best time</label></div>
+        <div><span id="stat-cores">0</span><label>Cores</label></div>
+        <div><span id="stat-runs">0</span><label>Runs</label></div>
+      </div>
+      <button id="btn-start" class="btn primary">Start Run</button>
+      <button id="btn-shop" class="btn">Upgrade Shop</button>
+      <p class="hint">WASD / Arrow keys to move &middot; your weapons fire automatically</p>
+    </div>
+
+    <div id="overlay-shop" class="overlay hidden">
+      <h1>UPGRADE SHOP</h1>
+      <p class="tagline">Spend Cores earned from runs on permanent bonuses.</p>
+      <div id="shop-list" class="shop-list"></div>
+      <button id="btn-shop-back" class="btn">Back</button>
+    </div>
+
+    <div id="overlay-levelup" class="overlay hidden">
+      <h1>LEVEL UP</h1>
+      <p class="tagline">Choose one</p>
+      <div id="levelup-cards" class="card-row"></div>
+    </div>
+
+    <div id="overlay-gameover" class="overlay hidden">
+      <h1>YOU FELL</h1>
+      <div id="gameover-stats" class="gameover-stats"></div>
+      <button id="btn-retry" class="btn primary">Retry</button>
+      <button id="btn-menu" class="btn">Main Menu</button>
+    </div>
+
+    <div id="overlay-paused" class="overlay hidden">
+      <h1>PAUSED</h1>
+      <button id="btn-resume" class="btn primary">Resume</button>
+    </div>
+
+    <div id="hud" class="hidden">
+      <div id="hp-bar-wrap"><div id="hp-bar"></div><span id="hp-text"></span></div>
+      <div id="xp-bar-wrap"><div id="xp-bar"></div></div>
+      <div id="hud-top-right">
+        <div id="hud-timer">0:00</div>
+        <div id="hud-level">Lv 1</div>
+      </div>
+      <div id="hud-cores">Cores: <span id="hud-cores-value">0</span></div>
+      <div id="boss-bar-wrap" class="hidden">
+        <div id="boss-name">BOSS</div>
+        <div id="boss-bar-bg"><div id="boss-bar"></div></div>
+        <div id="boss-callout"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
