@@ -28,8 +28,10 @@ bleeding monsters. You died on the first night; an ember off the dying sky
 stitched you back together wrong on purpose, cursed to return every time you
 fall. Every kill feeds the ember; every ember buys you a little more staying
 power. Four old Kings out in the dark still remember what the world was
-before you (sorry — before *it*) burned. Full text and boss lore are in the
-in-game **Story** screen (`js/lore.js`).
+before you (sorry — before *it*) burned. The opening beat plays automatically
+the first time you ever load the game (tracked in `localStorage`, once only);
+full text and boss lore are always available from the in-game **Story**
+screen (`js/lore.js`).
 
 ## Core loop
 
@@ -52,6 +54,20 @@ in-game **Story** screen (`js/lore.js`).
   run-independent bonuses — more max HP, move speed, damage, pickup radius,
   armor, attack speed. These persist across browser sessions (`localStorage`)
   and apply to every future run, so each death still moves you forward.
+- Max out a weapon (level 8) and its next level-up choice becomes a
+  guaranteed **Evolution** — Arcane Bolt becomes the piercing **Starfall
+  Lance**, Void Orbs becomes the bigger/faster **Void Halo**, and Shock Nova
+  becomes the huge-radius **Cataclysm**. Each evolution gets its own color
+  and a real damage/behavior jump, not just bigger numbers.
+
+## Sound
+
+All audio is synthesized live with the Web Audio API (`js/audio.js`) — no
+sound files. Hits, kills, level-ups, boss spawns/stuns/kills, and a low
+ambient drone during runs are all generated from oscillators and a noise
+buffer. There's a mute toggle on the main menu; the preference persists
+across sessions. Sound only starts after your first click/tap, per browser
+autoplay rules.
 
 ## Art & mobile
 
@@ -84,14 +100,15 @@ css/style.css        visual styling for HUD, overlays, joystick, mobile controls
 js/
   utils.js           math/random helpers
   save.js            localStorage persistence + permanent upgrade definitions
-  weapons.js          weapon stat curves (Arcane Bolt / Void Orbs / Shock Nova)
+  weapons.js          weapon stat curves + evolved forms (Arcane Bolt / Void Orbs / Shock Nova)
   lore.js            backstory + per-boss lore text
+  audio.js           Web Audio synthesized SFX + ambient drone (no audio files)
   entities.js        Player, Enemy, Projectile, XPOrb, Particle + all procedural art
   boss.js            Boss state machine (slam / charge / weak-point patterns) + boss art
-  upgrades.js        level-up card pool generation
+  upgrades.js        level-up card pool generation (incl. weapon evolutions)
   game.js            game state, spawner/difficulty curve, collision, render, environment art
-  ui.js              DOM overlay + HUD rendering
-  main.js            bootstraps canvas, input (keyboard + virtual joystick), game loop
+  ui.js              DOM overlay + HUD rendering (incl. first-run intro, story screen)
+  main.js            bootstraps canvas, input (keyboard + virtual joystick), audio unlock, game loop
 ```
 
 ## Notes

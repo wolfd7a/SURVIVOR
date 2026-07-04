@@ -1,6 +1,7 @@
 import { dist, clamp, angleTo, randRange, circlesOverlap } from "./utils.js";
 import { randInRing } from "./entities.js";
 import { BOSS_LORE } from "./lore.js";
+import { audio } from "./audio.js";
 
 export class Boss {
   constructor(tier, arenaSize) {
@@ -214,6 +215,7 @@ export class Boss {
   triggerStun(game) {
     this.weakpoint = null;
     this.stunTimer = 2.4;
+    audio.bossStun();
     this.setCallout("STUNNED! Weak point struck!", 1.6);
     const dmg = this.maxHp * 0.16;
     game.damageBoss(dmg, { crit: true });

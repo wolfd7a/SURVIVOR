@@ -11,6 +11,7 @@ import {
 import { Boss } from "./boss.js";
 import { generateChoices } from "./upgrades.js";
 import { getPermanentBonuses, recordRunResult } from "./save.js";
+import { audio } from "./audio.js";
 
 const ARENA_SIZE = 4800;
 const VIEW_W = 960;
@@ -136,6 +137,7 @@ export class Game {
     }
     this.pendingLevelUps--;
     this.state = "levelup";
+    audio.levelUp();
     const choices = generateChoices(this.player);
     this.callbacks.onLevelUp(choices, (choice) => {
       choice.apply(this.player);
@@ -162,12 +164,14 @@ export class Game {
     if (e.hp <= 0) return;
     e.hp -= dmg;
     e.hitFlash = 0.12;
+    audio.hitEnemy();
     this.texts.push(new FloatingText(e.x, e.y - e.radius - 4, Math.round(dmg).toString(), "#fecaca", 13));
     if (e.hp <= 0) this.onEnemyDeath(e);
   }
 
   onEnemyDeath(e) {
     this.kills++;
+    audio.enemyDeath();
     this.xpOrbs.push(new XPOrb(e.x, e.y, e.xpValue));
     this.spawnParticleBurst(e.x, e.y, e.color, 10);
   }
@@ -192,6 +196,7 @@ export class Game {
 
   onBossDeath() {
     const boss = this.boss;
+    audio.bossDefeat();
     this.spawnParticleBurst(boss.x, boss.y, "#f43f5e", 40);
     this.addScreenShake(14);
     this.xpOrbs.push(new XPOrb(boss.x - 15, boss.y, 45));
@@ -206,6 +211,7 @@ export class Game {
   damagePlayer(amount) {
     const actual = this.player.takeDamage(amount);
     if (actual > 0) {
+      audio.playerHit();
       this.texts.push(new FloatingText(this.player.x, this.player.y - 24, "-" + Math.round(actual), "#f87171", 15));
       this.addScreenShake(actual > 15 ? 7 : 3);
     }
@@ -216,6 +222,7 @@ export class Game {
     const spot = randomEdgePosition(this.player.x, this.player.y, 340);
     this.boss.x = spot.x;
     this.boss.y = spot.y;
+    audio.bossSpawn();
     this.callbacks.onBossStart?.(this.boss.name);
   }
 
@@ -301,6 +308,8 @@ export class Game {
 
   endRun() {
     this.state = "gameover";
+    audio.gameOver();
+    audio.stopDrone();
     const timeSurvived = this.time;
     const coresEarned = Math.round(timeSurvived / 5 + this.kills * 0.25 + this.coresFromBosses);
     recordRunResult({ timeSurvived, level: this.player.level, coresEarned });
@@ -327,7 +336,7 @@ export class Game {
 
     for (const n of this.novaPulses) {
       ctx.save();
-      ctx.strokeStyle = "rgba(103,232,249,0.7)";
+      ctx.strokeStyle = n.color ? n.color : "rgba(103,232,249,0.7)";
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);

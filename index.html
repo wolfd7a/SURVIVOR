@@ -11,6 +11,12 @@
   <div id="frame">
     <canvas id="game" width="960" height="600"></canvas>
 
+    <div id="overlay-intro" class="overlay hidden">
+      <h1>NIGHTFALL SWARM</h1>
+      <div id="intro-text" class="story-text"></div>
+      <button id="btn-intro-continue" class="btn primary">...survive.</button>
+    </div>
+
     <div id="overlay-menu" class="overlay">
       <h1>NIGHTFALL SWARM</h1>
       <p class="tagline">Survive the horde. Time the boss. Come back stronger.</p>
@@ -22,6 +28,7 @@
       <button id="btn-start" class="btn primary">Start Run</button>
       <button id="btn-shop" class="btn">Upgrade Shop</button>
       <button id="btn-story" class="btn">Story</button>
+      <button id="btn-mute" class="btn" type="button">Sound: On</button>
       <p class="hint">WASD / arrows &middot; or the on-screen stick on touch devices. Weapons fire automatically.</p>
     </div>
 

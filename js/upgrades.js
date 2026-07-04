@@ -100,6 +100,15 @@ export function generateChoices(player) {
         desc: def.describe(level + 1),
         apply: (p) => p.levelUpWeapon(key),
       });
+    } else if (!player.isEvolved(key)) {
+      pool.push({
+        id: `weapon-evolve-${key}`,
+        icon: def.evolved.icon,
+        name: `${def.evolved.name} (Evolve!)`,
+        weight: 14,
+        desc: def.evolved.describe(level),
+        apply: (p) => p.evolveWeapon(key),
+      });
     }
   }
 

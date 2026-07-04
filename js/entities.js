@@ -1,5 +1,6 @@
 import { clamp, dist, angleTo, circlesOverlap, randRange, randInt } from "./utils.js";
-import { WEAPON_DEFS } from "./weapons.js";
+import { WEAPON_DEFS, weaponStats } from "./weapons.js";
+import { audio } from "./audio.js";
 
 let nextId = 1;
 
@@ -35,7 +36,7 @@ export class Player {
     this.cooldownMult = bonuses.cooldownMult;
     this.invulnTimer = 0;
     this.hitFlash = 0;
-    this.weapons = [{ key: "bolt", level: 1 }];
+    this.weapons = [{ key: "bolt", level: 1, evolved: false }];
     this.weaponTimers = { bolt: 0.3 };
     this.orbitAngle = 0;
     this.kills = 0;
@@ -55,15 +56,25 @@ export class Player {
     return w ? w.level : 0;
   }
 
+  isEvolved(key) {
+    const w = this.weapons.find((w) => w.key === key);
+    return !!(w && w.evolved);
+  }
+
   addWeapon(key) {
     if (this.hasWeapon(key)) return;
-    this.weapons.push({ key, level: 1 });
+    this.weapons.push({ key, level: 1, evolved: false });
     this.weaponTimers[key] = 0.2;
   }
 
   levelUpWeapon(key) {
     const w = this.weapons.find((w) => w.key === key);
     if (w) w.level = Math.min(WEAPON_DEFS[key].maxLevel, w.level + 1);
+  }
+
+  evolveWeapon(key) {
+    const w = this.weapons.find((w) => w.key === key);
+    if (w) w.evolved = true;
   }
 
   takeDamage(amount) {
@@ -125,8 +136,7 @@ export class Player {
 
   updateWeapons(dt, game) {
     for (const w of this.weapons) {
-      const def = WEAPON_DEFS[w.key];
-      const stats = def.stats(w.level);
+      const stats = weaponStats(w.key, w.level, w.evolved);
       if (w.key === "bolt") {
         this.weaponTimers.bolt -= dt;
         if (this.weaponTimers.bolt <= 0) {
@@ -242,17 +252,20 @@ export class Player {
     ctx.restore();
 
     if (this.hasWeapon("orbit")) {
-      const stats = WEAPON_DEFS.orbit.stats(this.weaponLevel("orbit"));
+      const evolved = this.isEvolved("orbit");
+      const stats = weaponStats("orbit", this.weaponLevel("orbit"), evolved);
+      const color = evolved ? WEAPON_DEFS.orbit.evolved.color : "#67e8f9";
+      const orbRadius = evolved ? 9 : 7;
       for (let i = 0; i < stats.count; i++) {
         const a = this.orbitAngle * stats.angularSpeed + (i * Math.PI * 2) / stats.count;
         const ox = this.x + Math.cos(a) * stats.radius;
         const oy = this.y + Math.sin(a) * stats.radius;
         ctx.save();
-        ctx.shadowColor = "#22d3ee";
-        ctx.shadowBlur = 10;
-        ctx.fillStyle = "#67e8f9";
+        ctx.shadowColor = color;
+        ctx.shadowBlur = evolved ? 16 : 10;
+        ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(ox, oy, 7, 0, Math.PI * 2);
+        ctx.arc(ox, oy, orbRadius, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -267,6 +280,8 @@ export function xpForLevel(level) {
 function fireBolts(player, stats, game) {
   const targets = game.nearestEnemies(player.x, player.y, stats.count);
   if (targets.length === 0) return;
+  const evolved = player.isEvolved("bolt");
+  const color = evolved ? WEAPON_DEFS.bolt.evolved.color : "#fde68a";
   for (let i = 0; i < stats.count; i++) {
     const target = targets[i % targets.length];
     const a = angleTo(player.x, player.y, target.x, target.y);
@@ -278,14 +293,16 @@ function fireBolts(player, stats, game) {
         speed: stats.speed,
         damage: stats.damage * player.damageMult,
         pierce: stats.pierce,
-        color: "#fde68a",
+        color,
       })
     );
   }
 }
 
 function fireNova(player, stats, game) {
-  game.novaPulses.push({ x: player.x, y: player.y, radius: 0, maxRadius: stats.radius, life: 0.35 });
+  const evolved = player.isEvolved("nova");
+  const color = evolved ? WEAPON_DEFS.nova.evolved.color : "#67e8f9";
+  game.novaPulses.push({ x: player.x, y: player.y, radius: 0, maxRadius: stats.radius, life: 0.35, color });
   for (const e of game.enemies) {
     if (dist(e.x, e.y, player.x, player.y) <= stats.radius + e.radius) {
       game.damageEnemy(e, stats.damage * player.damageMult);
@@ -298,19 +315,20 @@ function fireNova(player, stats, game) {
 }
 
 function updateOrbits(player, stats, dt, game) {
+  const hitRadius = player.isEvolved("orbit") ? 9 : 7;
   for (let i = 0; i < stats.count; i++) {
     const a = player.orbitAngle * stats.angularSpeed + (i * Math.PI * 2) / stats.count;
     const ox = player.x + Math.cos(a) * stats.radius;
     const oy = player.y + Math.sin(a) * stats.radius;
     for (const e of game.enemies) {
       if ((e._orbitHit ?? 0) > 0) continue;
-      if (circlesOverlap(ox, oy, 7, e.x, e.y, e.radius)) {
+      if (circlesOverlap(ox, oy, hitRadius, e.x, e.y, e.radius)) {
         game.damageEnemy(e, stats.damage * player.damageMult);
         e._orbitHit = stats.hitCooldown;
       }
     }
     const boss = game.boss;
-    if (boss && (boss._orbitHit ?? 0) <= 0 && circlesOverlap(ox, oy, 7, boss.x, boss.y, boss.radius)) {
+    if (boss && (boss._orbitHit ?? 0) <= 0 && circlesOverlap(ox, oy, hitRadius, boss.x, boss.y, boss.radius)) {
       game.damageBoss(stats.damage * player.damageMult);
       if (game.boss === boss) boss._orbitHit = stats.hitCooldown;
     }
@@ -667,6 +685,7 @@ export class XPOrb {
     }
     if (circlesOverlap(this.x, this.y, this.radius, p.x, p.y, p.radius)) {
       p.gainXp(this.value, game);
+      audio.xpPickup();
       this.dead = true;
     }
   }

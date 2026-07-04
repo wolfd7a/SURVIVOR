@@ -5,6 +5,7 @@ import { STORY_TITLE, STORY_PARAGRAPHS, BOSS_LORE } from "./lore.js";
 const el = (id) => document.getElementById(id);
 
 const overlays = {
+  intro: el("overlay-intro"),
   menu: el("overlay-menu"),
   shop: el("overlay-shop"),
   story: el("overlay-story"),
@@ -90,6 +91,18 @@ function renderShop() {
     row.append(info, btn);
     list.appendChild(row);
   }
+}
+
+export function showIntro() {
+  hideAllOverlays();
+  const text = el("intro-text");
+  text.innerHTML = "";
+  for (const para of STORY_PARAGRAPHS.slice(0, 2)) {
+    const p = document.createElement("p");
+    p.textContent = para;
+    text.appendChild(p);
+  }
+  overlays.intro.classList.remove("hidden");
 }
 
 export function showStory() {

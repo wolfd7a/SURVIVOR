@@ -1,5 +1,6 @@
 import { Game } from "./game.js";
 import * as ui from "./ui.js";
+import { audio } from "./audio.js";
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -43,10 +44,33 @@ window.addEventListener("blur", () => {
   }
 });
 
+document.addEventListener(
+  "pointerdown",
+  () => {
+    audio.ensureContext();
+    audio.resume();
+  },
+  { once: true }
+);
+document.addEventListener("click", (e) => {
+  if (e.target.classList?.contains("btn")) audio.uiClick();
+});
+
+const muteBtn = document.getElementById("btn-mute");
+function refreshMuteLabel() {
+  muteBtn.textContent = audio.isMuted() ? "Sound: Off" : "Sound: On";
+}
+refreshMuteLabel();
+muteBtn.addEventListener("click", () => {
+  audio.toggleMuted();
+  refreshMuteLabel();
+});
+
 document.getElementById("btn-start").addEventListener("click", () => {
   game.startRun();
   ui.hideAllOverlays();
   ui.showHud();
+  audio.startDrone();
 });
 
 document.getElementById("btn-shop").addEventListener("click", () => ui.showShop());
@@ -58,6 +82,7 @@ document.getElementById("btn-retry").addEventListener("click", () => {
   game.startRun();
   ui.hideAllOverlays();
   ui.showHud();
+  audio.startDrone();
 });
 
 document.getElementById("btn-menu").addEventListener("click", () => ui.showMenu());
@@ -128,7 +153,17 @@ joystickZone.addEventListener("pointermove", (e) => {
 joystickZone.addEventListener("pointerup", endJoystick);
 joystickZone.addEventListener("pointercancel", endJoystick);
 
-ui.showMenu();
+const INTRO_SEEN_KEY = "nightfallSwarm.seenIntro";
+document.getElementById("btn-intro-continue").addEventListener("click", () => {
+  localStorage.setItem(INTRO_SEEN_KEY, "1");
+  ui.showMenu();
+});
+
+if (localStorage.getItem(INTRO_SEEN_KEY)) {
+  ui.showMenu();
+} else {
+  ui.showIntro();
+}
 
 let lastT = performance.now();
 function loop(now) {
