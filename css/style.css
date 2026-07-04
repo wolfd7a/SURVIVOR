@@ -33,6 +33,7 @@ html, body {
   background: var(--bg);
   overflow: hidden;
   aspect-ratio: 960 / 600;
+  touch-action: none;
 }
 
 canvas#game {
@@ -41,6 +42,7 @@ canvas#game {
   height: 100%;
   image-rendering: pixelated;
   background: #0d0d16;
+  touch-action: none;
 }
 
 .overlay {
@@ -192,7 +194,7 @@ canvas#game {
 #hud-top-right {
   position: absolute;
   top: 14px;
-  right: 16px;
+  right: 54px;
   text-align: right;
 }
 #hud-timer { font-size: 1.4em; font-weight: 700; text-shadow: 0 1px 3px #000; }
@@ -239,3 +241,83 @@ canvas#game {
   text-shadow: 0 0 10px rgba(0,0,0,0.9), 0 1px 3px #000;
   min-height: 1.2em;
 }
+
+#btn-pause-mobile {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+#joystick-zone {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  touch-action: none;
+}
+#joystick-zone.active { pointer-events: auto; }
+
+#joystick-base {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  margin-left: -50px;
+  margin-top: -50px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.25);
+  display: none;
+}
+#joystick-base.visible { display: block; }
+
+#joystick-knob {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  background: rgba(139,92,246,0.55);
+  border: 2px solid rgba(255,255,255,0.4);
+  transform: translate(-50%, -50%);
+}
+
+.story-text {
+  max-width: 560px;
+  max-height: 220px;
+  overflow-y: auto;
+  text-align: left;
+  line-height: 1.55;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.story-text p { margin: 0 0 10px; }
+
+.story-bosses {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 560px;
+  max-width: 90vw;
+  text-align: left;
+  margin-bottom: 8px;
+}
+.story-boss {
+  background: var(--panel);
+  border: 1px solid #2a2a3d;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.story-boss .name { font-weight: 700; color: var(--accent-2); letter-spacing: 1px; }
+.story-boss .blurb { color: var(--muted); font-size: 0.85em; }

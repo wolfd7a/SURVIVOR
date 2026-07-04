@@ -16,11 +16,65 @@ const ARENA_SIZE = 4800;
 const VIEW_W = 960;
 const VIEW_H = 600;
 
+function hash2(x, y) {
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function drawDecoration(ctx, x, y, typeRoll, rot, scale) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.scale(scale, scale);
+  ctx.globalAlpha = 0.55;
+  if (typeRoll < 0.4) {
+    ctx.fillStyle = "#2a2a38";
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * 6, Math.sin(a) * 4, 7, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (typeRoll < 0.65) {
+    ctx.strokeStyle = "rgba(220,220,210,0.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-10, 0);
+    ctx.lineTo(10, 0);
+    ctx.moveTo(-6, -5);
+    ctx.lineTo(-6, 5);
+    ctx.moveTo(6, -5);
+    ctx.lineTo(6, 5);
+    ctx.stroke();
+  } else if (typeRoll < 0.85) {
+    ctx.strokeStyle = "rgba(90,60,40,0.7)";
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * 10, Math.sin(a) * 10 - 4);
+      ctx.stroke();
+    }
+  } else {
+    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-12, -3);
+    ctx.lineTo(-2, 2);
+    ctx.lineTo(4, -4);
+    ctx.lineTo(14, 3);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 export class Game {
   constructor(callbacks) {
     this.callbacks = callbacks;
     this.arenaSize = ARENA_SIZE;
     this.input = { left: false, right: false, up: false, down: false };
+    this.touchVector = { x: 0, y: 0 };
     this.state = "menu";
     this.shake = 0;
   }
@@ -45,7 +99,29 @@ export class Game {
     this.pendingLevelUps = 0;
     this.camera = { x: 0, y: 0 };
     this.shake = 0;
+    this.ambientEmbers = Array.from({ length: 36 }, () => ({
+      x: randRange(-VIEW_W, VIEW_W),
+      y: randRange(-VIEW_H, VIEW_H),
+      vy: randRange(-22, -9),
+      phase: randRange(0, Math.PI * 2),
+      size: randRange(1.2, 2.8),
+    }));
     this.state = "playing";
+  }
+
+  updateAmbient(dt) {
+    const halfW = VIEW_W / 2 + 80;
+    const halfH = VIEW_H / 2 + 80;
+    for (const e of this.ambientEmbers) {
+      e.y += e.vy * dt;
+      e.phase += dt * 3;
+      const dx = e.x - this.camera.x;
+      const dy = e.y - this.camera.y;
+      if (Math.abs(dx) > halfW || Math.abs(dy) > halfH) {
+        e.x = this.camera.x + randRange(-halfW, halfW);
+        e.y = this.camera.y + halfH;
+      }
+    }
   }
 
   queueLevelUps(n) {
@@ -209,8 +285,18 @@ export class Game {
 
     this.camera.x = this.player.x;
     this.camera.y = this.player.y;
+    this.updateAmbient(dt);
 
-    if (this.player.hp <= 0 && this.state === "playing") this.endRun();
+    if (this.player.hp <= 0 && !this.player.dying) {
+      this.player.dying = true;
+      this.player.deathTimer = 0;
+      this.spawnParticleBurst(this.player.x, this.player.y, "#c4b5fd", 24);
+      this.addScreenShake(10);
+    }
+    if (this.player.dying) {
+      this.player.deathTimer += dt;
+      if (this.player.deathTimer >= 0.8) this.endRun();
+    }
   }
 
   endRun() {
@@ -257,13 +343,38 @@ export class Game {
     this.player.draw(ctx);
     for (const p of this.particles) p.draw(ctx);
     for (const t of this.texts) t.draw(ctx);
+    this.drawAmbient(ctx);
 
     ctx.restore();
+
+    const vignette = ctx.createRadialGradient(
+      VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.35,
+      VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.72
+    );
+    vignette.addColorStop(0, "rgba(0,0,0,0)");
+    vignette.addColorStop(1, "rgba(0,0,0,0.55)");
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+
+  drawAmbient(ctx) {
+    for (const e of this.ambientEmbers) {
+      const sway = Math.sin(e.phase) * 8;
+      ctx.save();
+      ctx.globalAlpha = 0.35 + Math.sin(e.phase * 1.7) * 0.25;
+      ctx.shadowColor = "#fbbf24";
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = "#fde68a";
+      ctx.beginPath();
+      ctx.arc(e.x + sway, e.y, e.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   drawBackground(ctx) {
     const half = this.arenaSize / 2;
-    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    ctx.strokeStyle = "rgba(255,255,255,0.04)";
     ctx.lineWidth = 1;
     const grid = 80;
     const startX = Math.floor((this.camera.x - VIEW_W) / grid) * grid;
@@ -281,9 +392,36 @@ export class Game {
     }
     ctx.stroke();
 
-    ctx.strokeStyle = "rgba(244,63,94,0.5)";
+    this.drawDecorations(ctx);
+
+    ctx.save();
+    ctx.shadowColor = "rgba(139,92,246,0.6)";
+    ctx.shadowBlur = 12;
+    ctx.strokeStyle = "rgba(139,92,246,0.55)";
     ctx.lineWidth = 4;
     ctx.strokeRect(-half, -half, this.arenaSize, this.arenaSize);
+    ctx.restore();
+  }
+
+  drawDecorations(ctx) {
+    const cell = 220;
+    const startCx = Math.floor((this.camera.x - VIEW_W) / cell);
+    const endCx = Math.ceil((this.camera.x + VIEW_W) / cell);
+    const startCy = Math.floor((this.camera.y - VIEW_H) / cell);
+    const endCy = Math.ceil((this.camera.y + VIEW_H) / cell);
+    for (let cx = startCx; cx <= endCx; cx++) {
+      for (let cy = startCy; cy <= endCy; cy++) {
+        if (hash2(cx, cy) > 0.55) continue;
+        const ox = (hash2(cx * 3.1, cy * 7.3) - 0.5) * cell * 0.8;
+        const oy = (hash2(cx * 9.7, cy * 2.3) - 0.5) * cell * 0.8;
+        const wx = cx * cell + cell / 2 + ox;
+        const wy = cy * cell + cell / 2 + oy;
+        const typeRoll = hash2(cx * 5.5, cy * 13.1);
+        const rot = hash2(cx * 17.3, cy * 4.1) * Math.PI * 2;
+        const scale = 0.7 + hash2(cx * 2.9, cy * 8.8) * 0.8;
+        drawDecoration(ctx, wx, wy, typeRoll, rot, scale);
+      }
+    }
   }
 }
 

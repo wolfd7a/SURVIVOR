@@ -16,8 +16,20 @@ python3 -m http.server 8000
 Then open `http://localhost:8000` in a browser (ES modules require serving
 over `http://`, not `file://`).
 
-**Controls:** WASD or arrow keys to move. Weapons fire automatically at the
-nearest enemy. `Esc` pauses.
+**Controls:** WASD or arrow keys to move, or drag anywhere on screen with a
+mouse/finger to use the virtual joystick (built for touch, works with mouse
+too). Weapons fire automatically at the nearest enemy. `Esc` or the on-screen
+pause button pauses.
+
+## Story
+
+*How the Dark Won* — when the last sun went out, the world's cracks started
+bleeding monsters. You died on the first night; an ember off the dying sky
+stitched you back together wrong on purpose, cursed to return every time you
+fall. Every kill feeds the ember; every ember buys you a little more staying
+power. Four old Kings out in the dark still remember what the world was
+before you (sorry — before *it*) burned. Full text and boss lore are in the
+in-game **Story** screen (`js/lore.js`).
 
 ## Core loop
 
@@ -41,26 +53,55 @@ nearest enemy. `Esc` pauses.
   armor, attack speed. These persist across browser sessions (`localStorage`)
   and apply to every future run, so each death still moves you forward.
 
+## Art & mobile
+
+Everything here is drawn procedurally on canvas — no image/sprite assets —
+styled as a dark, glowing vector-silhouette look:
+
+- The player is an animated hooded figure (walk cycle, trailing cloak, a
+  pulsing ember held in hand) rather than a plain circle.
+- Each enemy type has its own silhouette and motion: the **Husk** is a
+  hunched shambler dragging one arm, the **Wretch** is a low four-legged
+  sprinter, the **Bonecrusher** is a spike-shouldered brute with a heavy
+  stomp, and the **Weeper** is a floating eye that visibly charges before it
+  fires.
+- Bosses are a crystalline core with a rotating shard ring, visible cracks
+  that spread as their HP drops, and a color/aura shift when stunned.
+- The arena has a soft vignette, scattered environmental decoration (rocks,
+  bones, dead bramble, cracks) generated procedurally per arena cell, and
+  drifting ember particles for atmosphere.
+
+Mobile/touch is a first-class input: dragging anywhere spawns a virtual
+joystick under your finger (`js/main.js` + `#joystick-zone` in `index.html`),
+touch targets are large, pinch-zoom/scroll are disabled during play, and
+there's an on-screen pause button alongside the `Esc` key.
+
 ## Project layout
 
 ```
-index.html          canvas + all DOM overlays (menu/shop/level-up/game over)
-css/style.css        visual styling for HUD + overlays
+index.html          canvas + all DOM overlays (menu/shop/story/level-up/game over) + joystick markup
+css/style.css        visual styling for HUD, overlays, joystick, mobile controls
 js/
   utils.js           math/random helpers
   save.js            localStorage persistence + permanent upgrade definitions
   weapons.js          weapon stat curves (Arcane Bolt / Void Orbs / Shock Nova)
-  entities.js        Player, Enemy, Projectile, XPOrb, Particle
-  boss.js            Boss state machine (slam / charge / weak-point patterns)
+  lore.js            backstory + per-boss lore text
+  entities.js        Player, Enemy, Projectile, XPOrb, Particle + all procedural art
+  boss.js            Boss state machine (slam / charge / weak-point patterns) + boss art
   upgrades.js        level-up card pool generation
-  game.js            game state, spawner/difficulty curve, collision, render
+  game.js            game state, spawner/difficulty curve, collision, render, environment art
   ui.js              DOM overlay + HUD rendering
-  main.js            bootstraps canvas, input, game loop
+  main.js            bootstraps canvas, input (keyboard + virtual joystick), game loop
 ```
 
 ## Notes
 
 - `window.game` is exposed in `main.js` as a debug/QA hook (harmless — just a
   reference to the running `Game` instance for poking at from devtools).
-- Nothing here is IP-sensitive; it's an original arena/weapon/upgrade set
-  inspired by the genre, not a clone of any specific game's assets or code.
+- Nothing here is IP-sensitive; it's an original arena/weapon/upgrade set and
+  original backstory inspired by the genre, not a clone of any specific
+  game's assets, code, or story.
+- All art is procedural canvas drawing — there's no image-generation step in
+  this project's toolchain, so "art" here means vector shapes, animation, and
+  lighting rather than sprite sheets. Swap in real sprites under `entities.js`
+  / `boss.js`'s `draw()` methods if you have some.

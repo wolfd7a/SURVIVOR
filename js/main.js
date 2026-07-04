@@ -51,6 +51,8 @@ document.getElementById("btn-start").addEventListener("click", () => {
 
 document.getElementById("btn-shop").addEventListener("click", () => ui.showShop());
 document.getElementById("btn-shop-back").addEventListener("click", () => ui.showMenu());
+document.getElementById("btn-story").addEventListener("click", () => ui.showStory());
+document.getElementById("btn-story-back").addEventListener("click", () => ui.showMenu());
 
 document.getElementById("btn-retry").addEventListener("click", () => {
   game.startRun();
@@ -65,6 +67,67 @@ document.getElementById("btn-resume").addEventListener("click", () => {
   ui.hidePaused();
 });
 
+document.getElementById("btn-pause-mobile").addEventListener("click", () => {
+  if (game.state === "playing") {
+    game.state = "paused";
+    ui.showPaused();
+  } else if (game.state === "paused") {
+    game.state = "playing";
+    ui.hidePaused();
+  }
+});
+
+// --- Virtual joystick (touch + mouse via Pointer Events) ---
+const joystickZone = document.getElementById("joystick-zone");
+const joystickBase = document.getElementById("joystick-base");
+const joystickKnob = document.getElementById("joystick-knob");
+const JOY_MAX_RADIUS = 46;
+let joyPointerId = null;
+
+function updateJoystick(clientX, clientY, rect) {
+  const originX = parseFloat(joystickBase.dataset.originX);
+  const originY = parseFloat(joystickBase.dataset.originY);
+  const dx = clientX - rect.left - originX;
+  const dy = clientY - rect.top - originY;
+  const len = Math.hypot(dx, dy);
+  const clampedLen = Math.min(len, JOY_MAX_RADIUS);
+  const nx = len > 0 ? dx / len : 0;
+  const ny = len > 0 ? dy / len : 0;
+  joystickKnob.style.transform = `translate(calc(-50% + ${nx * clampedLen}px), calc(-50% + ${ny * clampedLen}px))`;
+  game.touchVector.x = nx * (clampedLen / JOY_MAX_RADIUS);
+  game.touchVector.y = ny * (clampedLen / JOY_MAX_RADIUS);
+}
+
+function endJoystick(e) {
+  if (e.pointerId !== joyPointerId) return;
+  joyPointerId = null;
+  joystickBase.classList.remove("visible");
+  joystickKnob.style.transform = "translate(-50%, -50%)";
+  game.touchVector.x = 0;
+  game.touchVector.y = 0;
+}
+
+joystickZone.addEventListener("pointerdown", (e) => {
+  if (game.state !== "playing" || joyPointerId !== null) return;
+  joyPointerId = e.pointerId;
+  const rect = joystickZone.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  joystickBase.style.left = `${x}px`;
+  joystickBase.style.top = `${y}px`;
+  joystickBase.dataset.originX = x;
+  joystickBase.dataset.originY = y;
+  joystickBase.classList.add("visible");
+  updateJoystick(e.clientX, e.clientY, rect);
+  joystickZone.setPointerCapture(e.pointerId);
+});
+joystickZone.addEventListener("pointermove", (e) => {
+  if (e.pointerId !== joyPointerId) return;
+  updateJoystick(e.clientX, e.clientY, joystickZone.getBoundingClientRect());
+});
+joystickZone.addEventListener("pointerup", endJoystick);
+joystickZone.addEventListener("pointercancel", endJoystick);
+
 ui.showMenu();
 
 let lastT = performance.now();
@@ -73,6 +136,14 @@ function loop(now) {
   lastT = now;
 
   game.update(dt);
+
+  joystickZone.classList.toggle("active", game.state === "playing");
+  if (game.state !== "playing" && joyPointerId !== null) {
+    joyPointerId = null;
+    joystickBase.classList.remove("visible");
+    game.touchVector.x = 0;
+    game.touchVector.y = 0;
+  }
 
   if (game.player) {
     game.render(ctx);

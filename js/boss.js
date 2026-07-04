@@ -1,12 +1,13 @@
 import { dist, clamp, angleTo, randRange, circlesOverlap } from "./utils.js";
 import { randInRing } from "./entities.js";
-
-const NAMES = ["THE HOLLOW KING", "MATRIARCH OF ASH", "THE UNBLINKING", "WARDEN OF THE PIT"];
+import { BOSS_LORE } from "./lore.js";
 
 export class Boss {
   constructor(tier, arenaSize) {
+    const lore = BOSS_LORE[Math.min(tier, BOSS_LORE.length - 1)];
     this.id = -1000 - tier;
-    this.name = NAMES[Math.min(tier, NAMES.length - 1)];
+    this.name = lore.name;
+    this.lore = lore;
     this.tier = tier;
     this.radius = 34;
     this.maxHp = 380 * (1 + tier * 0.65);
@@ -26,6 +27,8 @@ export class Boss {
     this.calloutTimer = 0;
     this.deathHandled = false;
     this._orbitHit = 0;
+    this.animTime = 0;
+    this.setCallout(lore.intro, 2.6);
   }
 
   nextPattern() {
@@ -46,6 +49,7 @@ export class Boss {
   }
 
   update(dt, game) {
+    this.animTime += dt;
     if (this.calloutTimer > 0) this.calloutTimer -= dt;
     if (this._orbitHit > 0) this._orbitHit -= dt;
 
@@ -261,17 +265,77 @@ export class Boss {
       ctx.restore();
     }
 
+    const hpPct = clamp(this.hp / this.maxHp, 0, 1);
+    const stunned = this.stunTimer > 0;
+    const charging = this.phase.startsWith("telegraph") || this.phase === "charging";
+    const auraColor = stunned ? "#fde68a" : charging ? "#fb7185" : "#c026d3";
+
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.shadowColor = this.stunTimer > 0 ? "#facc15" : "#f43f5e";
-    ctx.shadowBlur = 20;
-    ctx.fillStyle = this.stunTimer > 0 ? "#fde68a" : "#3b0764";
+
+    // ground shadow
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
     ctx.beginPath();
-    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.ellipse(0, this.radius * 0.85, this.radius * 1.1, this.radius * 0.35, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#f43f5e";
+
+    // outer rotating shard ring
+    const shardCount = 6;
+    for (let i = 0; i < shardCount; i++) {
+      const a = this.animTime * (stunned ? 3.2 : 0.7) + (i * Math.PI * 2) / shardCount;
+      const sx = Math.cos(a) * (this.radius + 14);
+      const sy = Math.sin(a) * (this.radius + 14);
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(a + Math.PI / 2);
+      ctx.fillStyle = auraColor;
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.moveTo(0, -9);
+      ctx.lineTo(5, 7);
+      ctx.lineTo(-5, 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // core body
+    const pulse = 1 + Math.sin(this.animTime * (stunned ? 10 : 3)) * (stunned ? 0.06 : 0.03);
+    ctx.shadowColor = auraColor;
+    ctx.shadowBlur = stunned ? 28 : 20;
+    ctx.fillStyle = stunned ? "#fef3c7" : "#2e1065";
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = auraColor;
     ctx.lineWidth = 3;
     ctx.stroke();
+
+    // inner crystalline heart
+    ctx.fillStyle = auraColor;
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(0, -this.radius * 0.5);
+    ctx.lineTo(this.radius * 0.35, 0);
+    ctx.lineTo(0, this.radius * 0.5);
+    ctx.lineTo(-this.radius * 0.35, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // cracks that spread as HP drops
+    const crackCount = Math.round((1 - hpPct) * 7);
+    ctx.strokeStyle = "rgba(0,0,0,0.65)";
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < crackCount; i++) {
+      const a = (i / 7) * Math.PI * 2 + this.tier;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * this.radius * 0.9, Math.sin(a) * this.radius * 0.9);
+      ctx.stroke();
+    }
+
     ctx.restore();
   }
 }

@@ -1,11 +1,13 @@
 import { formatTime, clamp } from "./utils.js";
 import { getSave, PERMANENT_UPGRADES, upgradeCost, buyUpgrade } from "./save.js";
+import { STORY_TITLE, STORY_PARAGRAPHS, BOSS_LORE } from "./lore.js";
 
 const el = (id) => document.getElementById(id);
 
 const overlays = {
   menu: el("overlay-menu"),
   shop: el("overlay-shop"),
+  story: el("overlay-story"),
   levelup: el("overlay-levelup"),
   gameover: el("overlay-gameover"),
   paused: el("overlay-paused"),
@@ -88,6 +90,33 @@ function renderShop() {
     row.append(info, btn);
     list.appendChild(row);
   }
+}
+
+export function showStory() {
+  hideAllOverlays();
+  el("story-title").textContent = STORY_TITLE;
+  const text = el("story-text");
+  text.innerHTML = "";
+  for (const para of STORY_PARAGRAPHS) {
+    const p = document.createElement("p");
+    p.textContent = para;
+    text.appendChild(p);
+  }
+  const bosses = el("story-bosses");
+  bosses.innerHTML = "";
+  for (const boss of BOSS_LORE) {
+    const row = document.createElement("div");
+    row.className = "story-boss";
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = boss.name;
+    const blurb = document.createElement("div");
+    blurb.className = "blurb";
+    blurb.textContent = boss.blurb;
+    row.append(name, blurb);
+    bosses.appendChild(row);
+  }
+  overlays.story.classList.remove("hidden");
 }
 
 export function showLevelUp(choices, onPick) {

@@ -3,6 +3,19 @@ import { WEAPON_DEFS } from "./weapons.js";
 
 let nextId = 1;
 
+function drawLimb(ctx, x, y, angleDeg, length, width, color) {
+  const rad = (angleDeg * Math.PI) / 180;
+  const endX = x + Math.sin(rad) * length;
+  const endY = y + Math.cos(rad) * length;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+}
+
 export class Player {
   constructor(bonuses) {
     this.id = nextId++;
@@ -27,6 +40,10 @@ export class Player {
     this.orbitAngle = 0;
     this.kills = 0;
     this.facing = 0;
+    this.animTime = 0;
+    this.moving = false;
+    this.dying = false;
+    this.deathTimer = 0;
   }
 
   hasWeapon(key) {
@@ -76,16 +93,27 @@ export class Player {
     if (this.regen > 0) this.hp = Math.min(this.maxHp, this.hp + this.regen * dt);
 
     let mx = 0, my = 0;
-    if (game.input.left) mx -= 1;
-    if (game.input.right) mx += 1;
-    if (game.input.up) my -= 1;
-    if (game.input.down) my += 1;
-    if (mx !== 0 || my !== 0) {
-      const len = Math.hypot(mx, my);
-      mx /= len; my /= len;
+    const touch = game.touchVector;
+    if (touch && (touch.x !== 0 || touch.y !== 0)) {
+      mx = touch.x;
+      my = touch.y;
+    } else {
+      if (game.input.left) mx -= 1;
+      if (game.input.right) mx += 1;
+      if (game.input.up) my -= 1;
+      if (game.input.down) my += 1;
+    }
+    const moveLen = Math.hypot(mx, my);
+    this.moving = moveLen > 0.05;
+    if (this.moving) {
+      const norm = Math.min(1, moveLen);
+      mx /= moveLen; my /= moveLen;
       this.facing = Math.atan2(my, mx);
-      this.x += mx * this.baseSpeed * dt;
-      this.y += my * this.baseSpeed * dt;
+      this.x += mx * this.baseSpeed * norm * dt;
+      this.y += my * this.baseSpeed * norm * dt;
+      this.animTime += dt * (4 + norm * 6);
+    } else {
+      this.animTime += dt * 1.2;
     }
     const half = game.arenaSize / 2;
     this.x = clamp(this.x, -half + this.radius, half - this.radius);
@@ -118,26 +146,99 @@ export class Player {
   }
 
   draw(ctx) {
+    const faceDir = Math.cos(this.facing) >= 0 ? 1 : -1;
+    const bob = this.moving ? Math.sin(this.animTime) * 2.4 : Math.sin(this.animTime * 0.5) * 1;
+    const legSwing = this.moving ? Math.sin(this.animTime * 1.6) : 0;
+
     ctx.save();
-    ctx.translate(this.x, this.y);
-    if (this.invulnTimer > 0 && Math.floor(this.invulnTimer * 20) % 2 === 0) {
-      ctx.globalAlpha = 0.5;
+    ctx.translate(this.x, this.y + bob * 0.3);
+
+    if (this.dying) {
+      const t = clamp(this.deathTimer / 0.8, 0, 1);
+      ctx.globalAlpha = t;
+      ctx.scale(1 + (1 - t) * 0.3, t);
+      ctx.rotate((1 - t) * faceDir * 0.6);
+    } else if (this.invulnTimer > 0 && Math.floor(this.invulnTimer * 20) % 2 === 0) {
+      ctx.globalAlpha = 0.55;
     }
-    ctx.shadowColor = "#8b5cf6";
-    ctx.shadowBlur = 14;
-    ctx.fillStyle = this.hitFlash > 0 ? "#fca5a5" : "#c4b5fd";
+
+    ctx.scale(faceDir, 1);
+
+    // ember aura
+    const auraPulse = 0.85 + Math.sin(this.animTime * 2.2) * 0.15;
+    const auraGrad = ctx.createRadialGradient(0, 4, 2, 0, 4, this.radius * 2.4 * auraPulse);
+    auraGrad.addColorStop(0, "rgba(139,92,246,0.35)");
+    auraGrad.addColorStop(1, "rgba(139,92,246,0)");
+    ctx.fillStyle = auraGrad;
     ctx.beginPath();
-    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.arc(0, 4, this.radius * 2.4 * auraPulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ground shadow
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(0, this.radius * 0.95, this.radius * 0.8, this.radius * 0.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // cloak trailing behind
+    ctx.fillStyle = "#2d1b4e";
+    ctx.beginPath();
+    ctx.moveTo(-this.radius * 0.6, -this.radius * 0.2);
+    ctx.quadraticCurveTo(
+      -this.radius * 1.7 - legSwing * 4,
+      this.radius * 0.6,
+      -this.radius * 0.9,
+      this.radius * 1.3
+    );
+    ctx.quadraticCurveTo(0, this.radius * 0.9, this.radius * 0.6, -this.radius * 0.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // legs
+    const skin = this.hitFlash > 0 ? "#fca5a5" : "#3f2d63";
+    drawLimb(ctx, 4, this.radius * 0.5, legSwing * 8, this.radius * 0.9, 4.5, skin);
+    drawLimb(ctx, -4, this.radius * 0.5, -legSwing * 8, this.radius * 0.9, 4.5, skin);
+
+    // torso
+    ctx.fillStyle = this.hitFlash > 0 ? "#fecaca" : "#c4b5fd";
+    ctx.beginPath();
+    ctx.ellipse(0, -this.radius * 0.15, this.radius * 0.62, this.radius * 0.78, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#4c1d95";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // arm holding the ember
+    const armSwing = this.moving ? Math.sin(this.animTime * 1.6 + Math.PI) * 6 : 0;
+    drawLimb(ctx, this.radius * 0.4, -this.radius * 0.1, 30 + armSwing, this.radius * 0.75, 4, "#3f2d63");
+    const emberGlow = 0.6 + Math.sin(this.animTime * 5) * 0.4;
+    ctx.save();
+    ctx.shadowColor = "#f59e0b";
+    ctx.shadowBlur = 10 + emberGlow * 6;
+    ctx.fillStyle = `rgba(251,191,36,${0.7 + emberGlow * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(this.radius * 0.95, this.radius * 0.55, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // head + hood
+    ctx.fillStyle = this.hitFlash > 0 ? "#fecaca" : "#ddd6fe";
+    ctx.beginPath();
+    ctx.arc(0, -this.radius * 0.95, this.radius * 0.48, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#2d1b4e";
+    ctx.beginPath();
+    ctx.arc(0, -this.radius * 1.1, this.radius * 0.5, Math.PI, 0);
+    ctx.fill();
+    // glowing eyes
+    ctx.fillStyle = "#fbbf24";
+    ctx.shadowColor = "#fbbf24";
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.arc(this.radius * 0.14, -this.radius * 0.95, 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = "#4c1d95";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // facing nub
-    ctx.fillStyle = "#4c1d95";
-    ctx.beginPath();
-    ctx.arc(Math.cos(this.facing) * this.radius * 0.8, Math.sin(this.facing) * this.radius * 0.8, 3, 0, Math.PI * 2);
-    ctx.fill();
+
     ctx.restore();
 
     if (this.hasWeapon("orbit")) {
@@ -241,6 +342,9 @@ export class Enemy {
     this.fireTimer = randRange(0.5, 2.5);
     this._orbitHit = 0;
     this.hitFlash = 0;
+    this.animTime = randRange(0, 10);
+    this.angle = 0;
+    this.charging = false;
   }
 
   update(dt, game) {
@@ -249,10 +353,15 @@ export class Enemy {
     const p = game.player;
     const a = angleTo(this.x, this.y, p.x, p.y);
     const d = dist(this.x, this.y, p.x, p.y);
+    this.angle = a;
+    this.animTime += dt * (this.type === "shambler" ? 3 : this.type === "brute" ? 2.5 : 8);
+    this.charging = false;
     if (this.ranged && d < 320) {
       this.fireTimer -= dt;
+      this.charging = this.fireTimer <= 0.5;
       if (this.fireTimer <= 0) {
         this.fireTimer = 2.4;
+        this.charging = false;
         game.enemyProjectiles.push(
           new EnemyProjectile({ x: this.x, y: this.y, angle: a, speed: 210, damage: this.damage })
         );
@@ -274,17 +383,180 @@ export class Enemy {
   draw(ctx) {
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.fillStyle = this.hitFlash > 0 ? "#fff" : this.color;
+
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(0, this.radius * 0.8, this.radius * 0.85, this.radius * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const flashed = this.hitFlash > 0;
+    ctx.save();
+    if (this.type === "shambler") this.drawHusk(ctx, flashed);
+    else if (this.type === "sprinter") this.drawWretch(ctx, flashed);
+    else if (this.type === "brute") this.drawBonecrusher(ctx, flashed);
+    else if (this.type === "shooter") this.drawWeeper(ctx, flashed);
+    else this.drawFallback(ctx, flashed);
+    ctx.restore();
+
+    if (this.maxHp > 20) {
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(-this.radius, -this.radius - 10, this.radius * 2, 4);
+      ctx.fillStyle = "#4ade80";
+      ctx.fillRect(-this.radius, -this.radius - 10, this.radius * 2 * clamp(this.hp / this.maxHp, 0, 1), 4);
+    }
+    ctx.restore();
+  }
+
+  drawFallback(ctx, flashed) {
+    ctx.fillStyle = flashed ? "#fff" : this.color;
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
     ctx.fill();
-    if (this.maxHp > 20) {
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(-this.radius, -this.radius - 8, this.radius * 2, 4);
-      ctx.fillStyle = "#4ade80";
-      ctx.fillRect(-this.radius, -this.radius - 8, this.radius * 2 * clamp(this.hp / this.maxHp, 0, 1), 4);
+  }
+
+  drawHusk(ctx, flashed) {
+    const r = this.radius;
+    const shuffle = Math.sin(this.animTime) * 3;
+    const bodyColor = flashed ? "#fff" : "#8b1a1a";
+    // dragging arm
+    drawLimb(ctx, r * 0.4, -r * 0.1, 100, r * 1.1, 4, flashed ? "#fff" : "#5c1010");
+    // hunched body
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.1 + shuffle * 0.2, r * 0.95, r * 0.85, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    // head sunk forward
+    ctx.beginPath();
+    ctx.arc(r * 0.35, -r * 0.55, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    // glowing eyes
+    ctx.fillStyle = "#f87171";
+    ctx.shadowColor = "#f87171";
+    ctx.shadowBlur = 5;
+    ctx.beginPath();
+    ctx.arc(r * 0.5, -r * 0.58, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // legs
+    drawLimb(ctx, r * 0.3, r * 0.6, 10 + shuffle * 4, r * 0.6, 4, flashed ? "#fff" : "#5c1010");
+    drawLimb(ctx, -r * 0.3, r * 0.6, -10 - shuffle * 4, r * 0.6, 4, flashed ? "#fff" : "#5c1010");
+  }
+
+  drawWretch(ctx, flashed) {
+    const r = this.radius;
+    ctx.rotate(this.angle);
+    const gallop = Math.sin(this.animTime);
+    const bodyColor = flashed ? "#fff" : "#d97706";
+    // legs (four, alternating)
+    for (let i = 0; i < 4; i++) {
+      const side = i < 2 ? 1 : -1;
+      const front = i % 2 === 0 ? 1 : -1;
+      const swing = Math.sin(this.animTime + (i % 2) * Math.PI) * 12;
+      drawLimb(ctx, front * r * 0.5, side * r * 0.3, front * 40 + swing, r * 0.55, 3, flashed ? "#fff" : "#7c2d12");
     }
-    ctx.restore();
+    // body
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.15, r * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // head
+    ctx.beginPath();
+    ctx.ellipse(r * 1.05, 0, r * 0.4, r * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // eye
+    ctx.fillStyle = "#fef08a";
+    ctx.shadowColor = "#fef08a";
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.arc(r * 1.25, -r * 0.05, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // tail
+    ctx.strokeStyle = flashed ? "#fff" : "#7c2d12";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.9, 0);
+    ctx.quadraticCurveTo(-r * 1.5, gallop * 6, -r * 1.8, -gallop * 4);
+    ctx.stroke();
+  }
+
+  drawBonecrusher(ctx, flashed) {
+    const r = this.radius;
+    const stomp = Math.sin(this.animTime) * 3;
+    const bodyColor = flashed ? "#fff" : "#7f1d1d";
+    // legs
+    drawLimb(ctx, r * 0.4, r * 0.6, 12 + stomp * 3, r * 0.65, 7, flashed ? "#fff" : "#450a0a");
+    drawLimb(ctx, -r * 0.4, r * 0.6, -12 - stomp * 3, r * 0.65, 7, flashed ? "#fff" : "#450a0a");
+    // hulking torso
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.ellipse(0, stomp * 0.3, r, r * 0.9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // shoulder spikes
+    ctx.fillStyle = flashed ? "#fff" : "#292524";
+    for (const sx of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(sx * r * 0.55, -r * 0.55);
+      ctx.lineTo(sx * r * 0.95, -r * 1.1);
+      ctx.lineTo(sx * r * 0.25, -r * 0.75);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // small sunken head
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.arc(0, -r * 0.5, r * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fbbf24";
+    ctx.shadowColor = "#fbbf24";
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.arc(-r * 0.1, -r * 0.52, 2, 0, Math.PI * 2);
+    ctx.arc(r * 0.1, -r * 0.52, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  drawWeeper(ctx, flashed) {
+    const r = this.radius;
+    const bob = Math.sin(this.animTime * 0.6) * 3;
+    ctx.translate(0, bob);
+    // tentacle wisps
+    ctx.strokeStyle = flashed ? "#fff" : "#6b21a8";
+    ctx.lineWidth = 3;
+    for (let i = -1; i <= 1; i++) {
+      const wave = Math.sin(this.animTime + i) * 5;
+      ctx.beginPath();
+      ctx.moveTo(i * r * 0.5, r * 0.5);
+      ctx.quadraticCurveTo(i * r * 0.5 + wave, r * 1.1, i * r * 0.4, r * 1.5);
+      ctx.stroke();
+    }
+    // charge aura
+    if (this.charging) {
+      ctx.save();
+      ctx.globalAlpha = 0.5 + Math.sin(this.animTime * 4) * 0.3;
+      ctx.fillStyle = "#e9d5ff";
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    // eye body
+    ctx.fillStyle = flashed ? "#fff" : "#4c1d95";
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#e9d5ff";
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2);
+    ctx.fill();
+    // iris tracking player
+    const pupilX = Math.cos(this.angle) * r * 0.28;
+    const pupilY = Math.sin(this.angle) * r * 0.28;
+    ctx.fillStyle = "#6b21a8";
+    ctx.beginPath();
+    ctx.arc(pupilX, pupilY, this.charging ? r * 0.34 : r * 0.24, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Nightfall Swarm</title>
 <link rel="stylesheet" href="css/style.css" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌙</text></svg>" />
@@ -21,7 +21,8 @@
       </div>
       <button id="btn-start" class="btn primary">Start Run</button>
       <button id="btn-shop" class="btn">Upgrade Shop</button>
-      <p class="hint">WASD / Arrow keys to move &middot; your weapons fire automatically</p>
+      <button id="btn-story" class="btn">Story</button>
+      <p class="hint">WASD / arrows &middot; or the on-screen stick on touch devices. Weapons fire automatically.</p>
     </div>
 
     <div id="overlay-shop" class="overlay hidden">
@@ -29,6 +30,13 @@
       <p class="tagline">Spend Cores earned from runs on permanent bonuses.</p>
       <div id="shop-list" class="shop-list"></div>
       <button id="btn-shop-back" class="btn">Back</button>
+    </div>
+
+    <div id="overlay-story" class="overlay hidden">
+      <h1 id="story-title">STORY</h1>
+      <div id="story-text" class="story-text"></div>
+      <div id="story-bosses" class="story-bosses"></div>
+      <button id="btn-story-back" class="btn">Back</button>
     </div>
 
     <div id="overlay-levelup" class="overlay hidden">
@@ -61,6 +69,13 @@
         <div id="boss-name">BOSS</div>
         <div id="boss-bar-bg"><div id="boss-bar"></div></div>
         <div id="boss-callout"></div>
+      </div>
+      <button id="btn-pause-mobile" aria-label="Pause">&#10074;&#10074;</button>
+    </div>
+
+    <div id="joystick-zone">
+      <div id="joystick-base">
+        <div id="joystick-knob"></div>
       </div>
     </div>
   </div>
