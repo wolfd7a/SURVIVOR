@@ -206,7 +206,9 @@ export function updateHud(game) {
   xpBar.style.width = `${clamp((p.xp / p.xpToNext) * 100, 0, 100)}%`;
   timerEl.textContent = formatTime(game.time);
   levelEl.textContent = `Lv ${p.level}`;
-  coresEl.textContent = Math.round(game.time / 5 + game.kills * 0.25 + game.coresFromBosses);
+  coresEl.textContent = Math.round(
+    game.time / 5 + game.kills * 0.25 + game.coresFromBosses + game.coresFromElites
+  );
 
   if (game.boss) {
     bossWrap.classList.remove("hidden");

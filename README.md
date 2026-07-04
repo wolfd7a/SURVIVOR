@@ -59,6 +59,11 @@ screen (`js/lore.js`).
   Lance**, Void Orbs becomes the bigger/faster **Void Halo**, and Shock Nova
   becomes the huge-radius **Cataclysm**. Each evolution gets its own color
   and a real damage/behavior jump, not just bigger numbers.
+- Roughly every 40-60 seconds an **Elite** spawns — a buffed variant of a
+  regular enemy type (5x HP, tougher hits, marked with a spinning gold ring
+  and a gold health bar) that drops bonus Cores and XP. A minimap in the
+  corner shows elites, regular enemies, and the boss even when they're
+  off-screen in the (fairly large) arena.
 
 ## Sound
 
@@ -91,6 +96,11 @@ Mobile/touch is a first-class input: dragging anywhere spawns a virtual
 joystick under your finger (`js/main.js` + `#joystick-zone` in `index.html`),
 touch targets are large, pinch-zoom/scroll are disabled during play, and
 there's an on-screen pause button alongside the `Esc` key.
+
+Big hits get a beat of **hit-stop** (a few frames of extreme slow-motion, not
+a full freeze) plus a matching screen-color flash — on a boss weak-point
+stun, a boss kill, and an elite kill — to sell impact the way most modern
+action games do.
 
 ## Project layout
 

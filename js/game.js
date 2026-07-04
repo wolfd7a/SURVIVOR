@@ -78,6 +78,10 @@ export class Game {
     this.touchVector = { x: 0, y: 0 };
     this.state = "menu";
     this.shake = 0;
+    this.hitStop = 0;
+    this.flashTimer = 0;
+    this.flashMaxTimer = 0;
+    this.flashColor = "255,255,255";
   }
 
   startRun() {
@@ -95,11 +99,15 @@ export class Game {
     this.spawnTimer = 0.8;
     this.bossTimer = 90;
     this.bossesDefeated = 0;
+    this.eliteTimer = 24;
     this.kills = 0;
     this.coresFromBosses = 0;
+    this.coresFromElites = 0;
     this.pendingLevelUps = 0;
     this.camera = { x: 0, y: 0 };
     this.shake = 0;
+    this.hitStop = 0;
+    this.flashTimer = 0;
     this.ambientEmbers = Array.from({ length: 36 }, () => ({
       x: randRange(-VIEW_W, VIEW_W),
       y: randRange(-VIEW_H, VIEW_H),
@@ -156,6 +164,16 @@ export class Game {
     this.shake = Math.min(24, this.shake + mag);
   }
 
+  triggerHitStop(duration) {
+    this.hitStop = Math.max(this.hitStop, duration);
+  }
+
+  triggerFlash(color, duration) {
+    this.flashColor = color;
+    this.flashTimer = duration;
+    this.flashMaxTimer = duration;
+  }
+
   spawnParticleBurst(x, y, color, count) {
     for (let i = 0; i < count; i++) this.particles.push(new Particle(x, y, color));
   }
@@ -173,7 +191,14 @@ export class Game {
     this.kills++;
     audio.enemyDeath();
     this.xpOrbs.push(new XPOrb(e.x, e.y, e.xpValue));
-    this.spawnParticleBurst(e.x, e.y, e.color, 10);
+    this.spawnParticleBurst(e.x, e.y, e.color, e.elite ? 26 : 10);
+    if (e.elite) {
+      this.coresFromElites += 4;
+      this.xpOrbs.push(new XPOrb(e.x + 10, e.y, Math.round(e.xpValue * 0.4)));
+      this.triggerHitStop(0.05);
+      this.triggerFlash("251,191,36", 0.12);
+      this.addScreenShake(6);
+    }
   }
 
   damageBoss(dmg, opts = {}) {
@@ -188,6 +213,10 @@ export class Game {
         opts.crit ? 18 : 14
       )
     );
+    if (opts.crit) {
+      this.triggerHitStop(0.09);
+      this.triggerFlash("250,204,21", 0.15);
+    }
     if (this.boss.hp <= 0 && !this.boss.deathHandled) {
       this.boss.deathHandled = true;
       this.onBossDeath();
@@ -199,6 +228,8 @@ export class Game {
     audio.bossDefeat();
     this.spawnParticleBurst(boss.x, boss.y, "#f43f5e", 40);
     this.addScreenShake(14);
+    this.triggerHitStop(0.16);
+    this.triggerFlash("244,63,94", 0.3);
     this.xpOrbs.push(new XPOrb(boss.x - 15, boss.y, 45));
     this.xpOrbs.push(new XPOrb(boss.x + 15, boss.y, 45));
     this.coresFromBosses += 15 + this.bossesDefeated * 5;
@@ -234,6 +265,19 @@ export class Game {
     if (t > 25) pool.push({ type: "brute", weight: 5 });
     if (t > 55) pool.push({ type: "shooter", weight: 5 });
     return pickWeighted(pool, 1)[0].type;
+  }
+
+  updateEliteSpawning(dt) {
+    if (this.boss) return;
+    this.eliteTimer -= dt;
+    if (this.eliteTimer > 0) return;
+    this.eliteTimer = randRange(38, 58);
+    if (this.enemies.length > 160) return;
+    const hpMult = 1 + this.time * 0.02;
+    const dmgMult = 1 + this.time * 0.01;
+    const type = this.pickEnemyType(this.time);
+    const pos = randomEdgePosition(this.player.x, this.player.y, randRange(480, 620));
+    this.enemies.push(new Enemy(type, pos.x, pos.y, hpMult, dmgMult, true));
   }
 
   updateSpawning(dt) {
@@ -289,6 +333,9 @@ export class Game {
     }
 
     this.updateSpawning(dt);
+    this.updateEliteSpawning(dt);
+
+    if (this.flashTimer > 0) this.flashTimer = Math.max(0, this.flashTimer - dt);
 
     this.camera.x = this.player.x;
     this.camera.y = this.player.y;
@@ -311,7 +358,9 @@ export class Game {
     audio.gameOver();
     audio.stopDrone();
     const timeSurvived = this.time;
-    const coresEarned = Math.round(timeSurvived / 5 + this.kills * 0.25 + this.coresFromBosses);
+    const coresEarned = Math.round(
+      timeSurvived / 5 + this.kills * 0.25 + this.coresFromBosses + this.coresFromElites
+    );
     recordRunResult({ timeSurvived, level: this.player.level, coresEarned });
     this.callbacks.onGameOver({
       timeSurvived,
@@ -364,6 +413,60 @@ export class Game {
     vignette.addColorStop(1, "rgba(0,0,0,0.55)");
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+    if (this.flashTimer > 0) {
+      ctx.fillStyle = `rgba(${this.flashColor},${(this.flashTimer / this.flashMaxTimer) * 0.35})`;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
+
+    this.drawMinimap(ctx);
+  }
+
+  drawMinimap(ctx) {
+    const size = 130;
+    const margin = 14;
+    const x0 = VIEW_W - size - margin;
+    const y0 = VIEW_H - size - margin;
+    const scale = size / this.arenaSize;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(10,10,18,0.62)";
+    ctx.fillRect(x0, y0, size, size);
+    ctx.strokeStyle = "rgba(139,92,246,0.55)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x0, y0, size, size);
+
+    const cx = x0 + size / 2;
+    const cy = y0 + size / 2;
+
+    for (const e of this.enemies) {
+      const mx = cx + e.x * scale;
+      const my = cy + e.y * scale;
+      if (mx < x0 || mx > x0 + size || my < y0 || my > y0 + size) continue;
+      ctx.fillStyle = e.elite ? "#fbbf24" : "rgba(248,113,113,0.65)";
+      const s = e.elite ? 2.6 : 1.6;
+      ctx.fillRect(mx - s / 2, my - s / 2, s, s);
+    }
+
+    if (this.boss) {
+      const mx = cx + this.boss.x * scale;
+      const my = cy + this.boss.y * scale;
+      ctx.fillStyle = "#f43f5e";
+      ctx.beginPath();
+      ctx.arc(mx, my, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const px = cx + this.player.x * scale;
+    const py = cy + this.player.y * scale;
+    ctx.fillStyle = "#c4b5fd";
+    ctx.shadowColor = "#c4b5fd";
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
   }
 
   drawAmbient(ctx) {

@@ -343,19 +343,20 @@ export const ENEMY_DEFS = {
 };
 
 export class Enemy {
-  constructor(type, x, y, hpMult, dmgMult) {
+  constructor(type, x, y, hpMult, dmgMult, elite = false) {
     this.id = nextId++;
     this.type = type;
+    this.elite = elite;
     const def = ENEMY_DEFS[type];
     this.x = x;
     this.y = y;
-    this.radius = def.radius;
-    this.maxHp = def.hp * hpMult;
+    this.radius = def.radius * (elite ? 1.35 : 1);
+    this.maxHp = def.hp * hpMult * (elite ? 5 : 1);
     this.hp = this.maxHp;
-    this.speed = def.speed;
-    this.damage = def.damage * dmgMult;
+    this.speed = def.speed * (elite ? 0.92 : 1);
+    this.damage = def.damage * dmgMult * (elite ? 1.8 : 1);
     this.color = def.color;
-    this.xpValue = def.xp;
+    this.xpValue = def.xp * (elite ? 6 : 1);
     this.ranged = !!def.ranged;
     this.fireTimer = randRange(0.5, 2.5);
     this._orbitHit = 0;
@@ -407,6 +408,21 @@ export class Enemy {
     ctx.ellipse(0, this.radius * 0.8, this.radius * 0.85, this.radius * 0.28, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    if (this.elite) {
+      const pulse = 1 + Math.sin(this.animTime * 2) * 0.08;
+      ctx.save();
+      ctx.strokeStyle = "rgba(251,191,36,0.85)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.lineDashOffset = -this.animTime * 20;
+      ctx.shadowColor = "#fbbf24";
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius * 1.5 * pulse, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     const flashed = this.hitFlash > 0;
     ctx.save();
     if (this.type === "shambler") this.drawHusk(ctx, flashed);
@@ -419,7 +435,7 @@ export class Enemy {
     if (this.maxHp > 20) {
       ctx.fillStyle = "rgba(0,0,0,0.5)";
       ctx.fillRect(-this.radius, -this.radius - 10, this.radius * 2, 4);
-      ctx.fillStyle = "#4ade80";
+      ctx.fillStyle = this.elite ? "#fbbf24" : "#4ade80";
       ctx.fillRect(-this.radius, -this.radius - 10, this.radius * 2 * clamp(this.hp / this.maxHp, 0, 1), 4);
     }
     ctx.restore();

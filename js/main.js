@@ -167,8 +167,13 @@ if (localStorage.getItem(INTRO_SEEN_KEY)) {
 
 let lastT = performance.now();
 function loop(now) {
-  const dt = Math.min(0.05, (now - lastT) / 1000);
+  let dt = Math.min(0.05, (now - lastT) / 1000);
   lastT = now;
+
+  if (game.hitStop > 0) {
+    game.hitStop = Math.max(0, game.hitStop - dt);
+    dt *= 0.06;
+  }
 
   game.update(dt);
 
