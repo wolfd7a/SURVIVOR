@@ -11,6 +11,7 @@ const game = new Game({
   onGameOver: (stats) => ui.showGameOver(stats),
   onBossStart: () => {},
   onBossEnd: () => {},
+  onEpilogue: (onContinue) => ui.showEpilogue(onContinue),
 });
 window.game = game; // debug/QA hook, harmless in production
 

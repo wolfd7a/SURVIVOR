@@ -33,6 +33,12 @@ the first time you ever load the game (tracked in `localStorage`, once only);
 full text and boss lore are always available from the in-game **Story**
 screen (`js/lore.js`).
 
+The first time you fell the fourth King, Warden of the Pit, the run pauses
+for a one-time **epilogue** beat closing out the four-boss arc — then hands
+control right back, because the dark doesn't actually end and neither does
+the run. Bosses keep spawning (and scaling up) past that point for however
+long you can last.
+
 ## Core loop
 
 - Survive an escalating horde. Enemies get faster, tankier, and more frequent

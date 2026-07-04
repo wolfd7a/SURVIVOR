@@ -15,6 +15,7 @@ function defaultSave() {
     totalRuns: 0,
     bestTime: 0,
     bestLevel: 0,
+    totalBossesDefeated: 0,
     ranks: { maxHp: 0, moveSpeed: 0, damage: 0, magnet: 0, armor: 0, cooldown: 0 },
   };
 }
@@ -61,6 +62,11 @@ export function recordRunResult({ timeSurvived, level, coresEarned }) {
   state.totalRuns += 1;
   state.bestTime = Math.max(state.bestTime, timeSurvived);
   state.bestLevel = Math.max(state.bestLevel, level);
+  persist();
+}
+
+export function recordBossDefeat() {
+  state.totalBossesDefeated += 1;
   persist();
 }
 

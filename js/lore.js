@@ -6,6 +6,14 @@ export const STORY_PARAGRAPHS = [
   "Every kill feeds the ember. Every ember buys you one more second of not-dying, spent however you like. And somewhere out in the Swarm-choked dark, four old Kings still remember the world before you burned it — sorry, before it burned. They won't remind you gently.",
 ];
 
+export const EPILOGUE_TITLE = "What the Warden Was Guarding";
+
+export const EPILOGUE_PARAGRAPHS = [
+  "The Warden falls, and for one full second the Hollowing forgets to send anything else at you. Four Kings down. The pit it was guarding doesn't close — it just stops screaming.",
+  "You were told nobody who found out what the Warden guarded came back to say. You came back. You're just not sure yet whether that means you found out, or whether you're the answer.",
+  "The ember doesn't care either way. It's already counting the next kill. The dark didn't end because you won a fight — the sun still isn't up. But the Kings are gone, and something that used to be a Tuesday is still, technically, yours to survive.",
+];
+
 export const BOSS_LORE = [
   {
     name: "THE HOLLOW KING",

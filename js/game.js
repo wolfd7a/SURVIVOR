@@ -10,7 +10,9 @@ import {
 } from "./entities.js";
 import { Boss } from "./boss.js";
 import { generateChoices } from "./upgrades.js";
-import { getPermanentBonuses, recordRunResult } from "./save.js";
+import { getPermanentBonuses, recordRunResult, recordBossDefeat } from "./save.js";
+
+const EPILOGUE_KEY = "nightfallSwarm.seenEpilogue";
 import { audio } from "./audio.js";
 import { getReduceEffects } from "./settings.js";
 
@@ -239,10 +241,19 @@ export class Game {
     this.xpOrbs.push(new XPOrb(boss.x - 15, boss.y, 45));
     this.xpOrbs.push(new XPOrb(boss.x + 15, boss.y, 45));
     this.coresFromBosses += 15 + this.bossesDefeated * 5;
+    recordBossDefeat();
+    const isFirstWardenKill = boss.tier === 3 && !localStorage.getItem(EPILOGUE_KEY);
     this.bossesDefeated++;
     this.bossTimer = 100 + this.bossesDefeated * 45;
     this.callbacks.onBossEnd?.(boss.name);
     this.boss = null;
+    if (isFirstWardenKill) {
+      localStorage.setItem(EPILOGUE_KEY, "1");
+      this.state = "epilogue";
+      this.callbacks.onEpilogue?.(() => {
+        this.state = "playing";
+      });
+    }
   }
 
   damagePlayer(amount) {

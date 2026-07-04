@@ -1,6 +1,6 @@
 import { formatTime, clamp } from "./utils.js";
 import { getSave, PERMANENT_UPGRADES, upgradeCost, buyUpgrade } from "./save.js";
-import { STORY_TITLE, STORY_PARAGRAPHS, BOSS_LORE } from "./lore.js";
+import { STORY_TITLE, STORY_PARAGRAPHS, BOSS_LORE, EPILOGUE_TITLE, EPILOGUE_PARAGRAPHS } from "./lore.js";
 
 const el = (id) => document.getElementById(id);
 
@@ -12,6 +12,7 @@ const overlays = {
   levelup: el("overlay-levelup"),
   gameover: el("overlay-gameover"),
   paused: el("overlay-paused"),
+  epilogue: el("overlay-epilogue"),
 };
 const hud = el("hud");
 
@@ -24,6 +25,27 @@ export function refreshMenuStats() {
   el("stat-best-time").textContent = formatTime(s.bestTime);
   el("stat-cores").textContent = s.cores;
   el("stat-runs").textContent = s.totalRuns;
+  el("stat-bosses").textContent = s.totalBossesDefeated;
+}
+
+export function showEpilogue(onContinue) {
+  hideAllOverlays();
+  el("epilogue-title").textContent = EPILOGUE_TITLE;
+  const text = el("epilogue-text");
+  text.innerHTML = "";
+  for (const para of EPILOGUE_PARAGRAPHS) {
+    const p = document.createElement("p");
+    p.textContent = para;
+    text.appendChild(p);
+  }
+  overlays.epilogue.classList.remove("hidden");
+  const btn = el("btn-epilogue-continue");
+  const handler = () => {
+    hideAllOverlays();
+    btn.removeEventListener("click", handler);
+    onContinue();
+  };
+  btn.addEventListener("click", handler);
 }
 
 export function showMenu() {
