@@ -40,14 +40,26 @@ screen (`js/lore.js`).
   unlock over time.
 - Kill enemies to drop XP orbs; level up and pick one of three random
   upgrades — a new weapon, a weapon upgrade, or a stat boost.
-- Every 90+ seconds a **boss** spawns. Bosses telegraph their attacks:
-  - **Slam** — a growing warning circle marks where damage lands; get out of it.
-  - **Charge** — a warning lane shows the dash path; step off the line.
-  - **Weak Point** — a glowing ring appears somewhere in the arena. Stand
-    inside it for about a second before the window closes and the boss is
-    stunned and takes a heavy damage tick. Miss the window and nothing
-    happens — the pattern just moves on. This is the one attack you can't
-    win by dodging; you have to commit to a position and time it.
+- Every 90+ seconds a **boss** spawns. All four share a core kit, plus each
+  has one signature move of its own so the fights don't just feel like
+  palette swaps:
+  - **Slam** (all bosses) — a growing warning circle marks where damage
+    lands; get out of it.
+  - **Charge** (all bosses) — a warning lane shows the dash path; step off
+    the line.
+  - **Weak Point** (all bosses) — a glowing ring appears somewhere in the
+    arena. Stand inside it for about a second before the window closes and
+    the boss is stunned and takes a heavy damage tick. Miss the window and
+    nothing happens. This is the one attack you can't win by dodging; you
+    have to commit to a position and time it.
+  - **Summon** (Matriarch of Ash, boss 2) — calls in extra regular enemies
+    mid-fight, so you're managing a small swarm and the boss at once.
+  - **Gaze** (The Unblinking, boss 3) — telegraphs a line, then sweeps a
+    continuous damage beam across the arena; you have to move with the
+    sweep, not just away from a point.
+  - **Pits** (Warden of the Pit, boss 4+) — opens 2-3 simultaneous
+    telegraphed zones instead of one, so you're threading a gap rather than
+    running from a single circle.
 - Die, and the run ends. Time survived, kills, and bosses defeated convert
   into **Cores**.
 - Spend Cores in the **Upgrade Shop** (from the main menu) on permanent,

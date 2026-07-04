@@ -1,7 +1,16 @@
 import { dist, clamp, angleTo, randRange, circlesOverlap } from "./utils.js";
-import { randInRing } from "./entities.js";
+import { randInRing, Enemy } from "./entities.js";
 import { BOSS_LORE } from "./lore.js";
 import { audio } from "./audio.js";
+
+function angleDiff(a, b) {
+  let d = (a - b) % (Math.PI * 2);
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
+const SUMMON_TYPES = ["shambler", "sprinter"];
 
 export class Boss {
   constructor(tier, arenaSize) {
@@ -24,6 +33,8 @@ export class Boss {
     this.stunTimer = 0;
     this.telegraph = null;
     this.weakpoint = null;
+    this.pits = [];
+    this.gazeCurrentAngle = 0;
     this.callout = "";
     this.calloutTimer = 0;
     this.deathHandled = false;
@@ -32,10 +43,19 @@ export class Boss {
     this.setCallout(lore.intro, 2.6);
   }
 
+  patternPool() {
+    // Every boss keeps the core slam/charge/weak-point kit; each tier layers
+    // in one signature move so fights feel like different characters, not
+    // just palette-swapped numbers.
+    if (this.tier === 1) return ["slam", "charge", "weakpoint", "weakpoint", "summon", "summon"];
+    if (this.tier === 2) return ["slam", "charge", "weakpoint", "gaze", "gaze", "gaze"];
+    if (this.tier >= 3) return ["slam", "charge", "weakpoint", "pits", "pits", "pits"];
+    return ["slam", "slam", "charge", "weakpoint", "weakpoint", "charge"];
+  }
+
   nextPattern() {
     if (this.bag.length === 0) {
-      this.bag = ["slam", "slam", "charge", "weakpoint", "weakpoint", "charge"];
-      // shuffle
+      this.bag = this.patternPool();
       for (let i = this.bag.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
@@ -106,6 +126,34 @@ export class Boss {
         if (this.phaseTimer <= 0) this.enterRecover();
         break;
       }
+      case "summon_cast": {
+        this.phaseTimer -= dt;
+        if (this.phaseTimer <= 0) this.resolveSummon(game);
+        break;
+      }
+      case "telegraph_gaze": {
+        this.phaseTimer -= dt;
+        if (this.phaseTimer <= 0) this.beginGazeSweep(game);
+        break;
+      }
+      case "gazing": {
+        this.gazeElapsed += dt;
+        this.gazeCurrentAngle = this.gazeStartAngle + this.gazeSpeed * this.gazeElapsed;
+        const angToPlayer = angleTo(this.x, this.y, p.x, p.y);
+        const d = dist(this.x, this.y, p.x, p.y);
+        if (Math.abs(angleDiff(angToPlayer, this.gazeCurrentAngle)) < 0.14 && d < 900) {
+          game.damagePlayer(this.contactDamage * 1.6 * dt);
+        }
+        this.phaseTimer -= dt;
+        if (this.phaseTimer <= 0) this.enterRecover();
+        break;
+      }
+      case "telegraph_pits": {
+        this.phaseTimer -= dt;
+        for (const pit of this.pits) pit.radius = pit.maxRadius * (1 - Math.max(0, this.phaseTimer) / pit.duration);
+        if (this.phaseTimer <= 0) this.resolvePits(game);
+        break;
+      }
       case "weakpoint_active": {
         this.chaseSlowly(dt, game);
         const wp = this.weakpoint;
@@ -155,6 +203,79 @@ export class Boss {
     if (pattern === "slam") this.beginSlam(game);
     else if (pattern === "charge") this.beginChargeTelegraph(game);
     else if (pattern === "weakpoint") this.beginWeakpoint(game);
+    else if (pattern === "summon") this.beginSummon(game);
+    else if (pattern === "gaze") this.beginGaze(game);
+    else if (pattern === "pits") this.beginPits(game);
+  }
+
+  beginSummon(game) {
+    this.setCallout("THE BROOD ANSWERS", 1.6);
+    this.phase = "summon_cast";
+    this.phaseTimer = 1.0;
+  }
+
+  resolveSummon(game) {
+    const half = this.arenaSize / 2 - 40;
+    for (let i = 0; i < 2; i++) {
+      const spot = randInRing(this.x, this.y, 70, 150);
+      const x = clamp(spot.x, -half, half);
+      const y = clamp(spot.y, -half, half);
+      const type = SUMMON_TYPES[Math.floor(Math.random() * SUMMON_TYPES.length)];
+      game.enemies.push(new Enemy(type, x, y, 1 + game.time * 0.02, 1 + game.time * 0.01));
+    }
+    game.spawnParticleBurst(this.x, this.y, "#f43f5e", 16);
+    this.enterRecover();
+  }
+
+  beginGaze(game) {
+    this.setCallout("THE GAZE OPENS", 1.4);
+    this.phase = "telegraph_gaze";
+    this.phaseTimer = 0.7;
+    const startAngle = angleTo(this.x, this.y, game.player.x, game.player.y) - 0.9;
+    this.telegraph = { kind: "gaze", angle: startAngle, duration: 0.7 };
+  }
+
+  beginGazeSweep(game) {
+    this.phase = "gazing";
+    this.phaseTimer = 1.6;
+    this.gazeStartAngle = this.telegraph.angle;
+    this.gazeSpeed = 1.8;
+    this.gazeElapsed = 0;
+    this.gazeCurrentAngle = this.gazeStartAngle;
+    this.telegraph = null;
+    game.addScreenShake(3);
+  }
+
+  beginPits(game) {
+    this.setCallout("THE PIT OPENS", 1.4);
+    this.phase = "telegraph_pits";
+    this.phaseTimer = 1.1;
+    const half = this.arenaSize / 2 - 60;
+    const count = 3;
+    this.pits = [];
+    for (let i = 0; i < count; i++) {
+      const spot = randInRing(game.player.x, game.player.y, 50, 260);
+      this.pits.push({
+        x: clamp(spot.x, -half, half),
+        y: clamp(spot.y, -half, half),
+        radius: 0,
+        maxRadius: 68,
+        duration: 1.1,
+      });
+    }
+  }
+
+  resolvePits(game) {
+    const p = game.player;
+    for (const pit of this.pits) {
+      if (dist(p.x, p.y, pit.x, pit.y) <= pit.maxRadius + p.radius) {
+        game.damagePlayer(24 + this.tier * 3);
+      }
+      game.spawnParticleBurst(pit.x, pit.y, "#f87171", 14);
+    }
+    game.addScreenShake(8);
+    this.pits = [];
+    this.enterRecover();
   }
 
   beginSlam(game) {
@@ -245,6 +366,50 @@ export class Boss {
       ctx.fillStyle = "rgba(248,113,113,0.3)";
       ctx.fillRect(0, -34, 900, 68);
       ctx.restore();
+    }
+    if (this.telegraph?.kind === "gaze") {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.telegraph.angle);
+      ctx.strokeStyle = "rgba(196,181,253,0.8)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(900, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (this.phase === "gazing") {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.gazeCurrentAngle);
+      const grad = ctx.createLinearGradient(0, 0, 900, 0);
+      grad.addColorStop(0, "rgba(233,213,255,0.95)");
+      grad.addColorStop(1, "rgba(233,213,255,0.05)");
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 22;
+      ctx.shadowColor = "#e9d5ff";
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(900, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (this.pits && this.pits.length) {
+      for (const pit of this.pits) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(248,113,113,0.9)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(pit.x, pit.y, pit.maxRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(127,29,29,0.4)";
+        ctx.beginPath();
+        ctx.arc(pit.x, pit.y, pit.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
     }
     if (this.weakpoint) {
       const wp = this.weakpoint;
