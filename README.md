@@ -59,11 +59,11 @@ screen (`js/lore.js`).
   Lance**, Void Orbs becomes the bigger/faster **Void Halo**, and Shock Nova
   becomes the huge-radius **Cataclysm**. Each evolution gets its own color
   and a real damage/behavior jump, not just bigger numbers.
-- Roughly every 40-60 seconds an **Elite** spawns — a buffed variant of a
-  regular enemy type (5x HP, tougher hits, marked with a spinning gold ring
-  and a gold health bar) that drops bonus Cores and XP. A minimap in the
-  corner shows elites, regular enemies, and the boss even when they're
-  off-screen in the (fairly large) arena.
+- Starting ~45 seconds in, and roughly every 40-60 seconds after that, an
+  **Elite** spawns — a buffed variant of a regular enemy type (4x HP, tougher
+  hits, marked with a spinning gold ring and a gold health bar) that drops
+  bonus Cores and XP. A minimap in the corner shows elites, regular enemies,
+  and the boss even when they're off-screen in the (fairly large) arena.
 
 ## Sound
 

@@ -99,7 +99,7 @@ export class Game {
     this.spawnTimer = 0.8;
     this.bossTimer = 90;
     this.bossesDefeated = 0;
-    this.eliteTimer = 24;
+    this.eliteTimer = 45;
     this.kills = 0;
     this.coresFromBosses = 0;
     this.coresFromElites = 0;
@@ -108,6 +108,7 @@ export class Game {
     this.shake = 0;
     this.hitStop = 0;
     this.flashTimer = 0;
+    this.introFade = 0.5;
     this.ambientEmbers = Array.from({ length: 36 }, () => ({
       x: randRange(-VIEW_W, VIEW_W),
       y: randRange(-VIEW_H, VIEW_H),
@@ -336,6 +337,7 @@ export class Game {
     this.updateEliteSpawning(dt);
 
     if (this.flashTimer > 0) this.flashTimer = Math.max(0, this.flashTimer - dt);
+    if (this.introFade > 0) this.introFade = Math.max(0, this.introFade - dt);
 
     this.camera.x = this.player.x;
     this.camera.y = this.player.y;
@@ -420,6 +422,11 @@ export class Game {
     }
 
     this.drawMinimap(ctx);
+
+    if (this.introFade > 0) {
+      ctx.fillStyle = `rgba(0,0,0,${this.introFade / 0.5})`;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
   }
 
   drawMinimap(ctx) {

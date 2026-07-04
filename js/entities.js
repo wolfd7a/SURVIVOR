@@ -351,10 +351,10 @@ export class Enemy {
     this.x = x;
     this.y = y;
     this.radius = def.radius * (elite ? 1.35 : 1);
-    this.maxHp = def.hp * hpMult * (elite ? 5 : 1);
+    this.maxHp = def.hp * hpMult * (elite ? 4 : 1);
     this.hp = this.maxHp;
     this.speed = def.speed * (elite ? 0.92 : 1);
-    this.damage = def.damage * dmgMult * (elite ? 1.8 : 1);
+    this.damage = def.damage * dmgMult * (elite ? 1.6 : 1);
     this.color = def.color;
     this.xpValue = def.xp * (elite ? 6 : 1);
     this.ranged = !!def.ranged;
