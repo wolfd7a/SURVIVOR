@@ -1,4 +1,7 @@
+import { clamp } from "./utils.js";
+
 const MUTE_KEY = "nightfallSwarm.muted";
+const VOLUME_KEY = "nightfallSwarm.volume";
 
 class AudioEngine {
   constructor() {
@@ -9,7 +12,13 @@ class AudioEngine {
     this.noiseBuffer = null;
     this.droneNodes = null;
     this.muted = localStorage.getItem(MUTE_KEY) === "1";
+    const storedVolume = parseFloat(localStorage.getItem(VOLUME_KEY));
+    this.volume = Number.isFinite(storedVolume) ? storedVolume : 0.5;
     this._lastXpTick = 0;
+  }
+
+  _effectiveGain() {
+    return this.muted ? 0 : this.volume;
   }
 
   ensureContext() {
@@ -18,7 +27,7 @@ class AudioEngine {
     if (!Ctx) return;
     this.ctx = new Ctx();
     this.master = this.ctx.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.5;
+    this.master.gain.value = this._effectiveGain();
     this.master.connect(this.ctx.destination);
     this.sfxGain = this.ctx.createGain();
     this.sfxGain.gain.value = 1;
@@ -40,12 +49,22 @@ class AudioEngine {
   setMuted(muted) {
     this.muted = muted;
     localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
-    if (this.master) this.master.gain.setTargetAtTime(muted ? 0 : 0.5, this.ctx.currentTime, 0.05);
+    if (this.master) this.master.gain.setTargetAtTime(this._effectiveGain(), this.ctx.currentTime, 0.05);
   }
 
   toggleMuted() {
     this.setMuted(!this.muted);
     return this.muted;
+  }
+
+  getVolume() {
+    return this.volume;
+  }
+
+  setVolume(volume) {
+    this.volume = clamp(volume, 0, 1);
+    localStorage.setItem(VOLUME_KEY, String(this.volume));
+    if (this.master) this.master.gain.setTargetAtTime(this._effectiveGain(), this.ctx.currentTime, 0.05);
   }
 
   _buildNoiseBuffer() {

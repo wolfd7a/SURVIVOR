@@ -1,6 +1,7 @@
 import { Game } from "./game.js";
 import * as ui from "./ui.js";
 import { audio } from "./audio.js";
+import * as settings from "./settings.js";
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -64,6 +65,18 @@ refreshMuteLabel();
 muteBtn.addEventListener("click", () => {
   audio.toggleMuted();
   refreshMuteLabel();
+});
+
+const volumeSlider = document.getElementById("volume-slider");
+volumeSlider.value = Math.round(audio.getVolume() * 100);
+volumeSlider.addEventListener("input", () => {
+  audio.setVolume(volumeSlider.valueAsNumber / 100);
+});
+
+const reduceEffectsBox = document.getElementById("reduce-effects");
+reduceEffectsBox.checked = settings.getReduceEffects();
+reduceEffectsBox.addEventListener("change", () => {
+  settings.setReduceEffects(reduceEffectsBox.checked);
 });
 
 document.getElementById("btn-start").addEventListener("click", () => {

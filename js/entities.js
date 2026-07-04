@@ -151,6 +151,12 @@ export class Player {
         }
       } else if (w.key === "orbit") {
         updateOrbits(this, stats, dt, game);
+      } else if (w.key === "trail") {
+        this.weaponTimers.trail = (this.weaponTimers.trail ?? 0) - dt;
+        if (this.moving && this.weaponTimers.trail <= 0) {
+          this.weaponTimers.trail = stats.dropInterval * this.cooldownMult;
+          dropTrailPatch(this, stats, game);
+        }
       }
     }
   }
@@ -312,6 +318,14 @@ function fireNova(player, stats, game) {
     game.damageBoss(stats.damage * player.damageMult);
   }
   game.addScreenShake(3);
+}
+
+function dropTrailPatch(player, stats, game) {
+  const evolved = player.isEvolved("trail");
+  const color = evolved ? WEAPON_DEFS.trail.evolved.color : "#f97316";
+  game.trailPatches.push(
+    new TrailPatch(player.x, player.y, stats.radius, stats.tickDamage * player.damageMult, stats.segmentLife, color)
+  );
 }
 
 function updateOrbits(player, stats, dt, game) {
@@ -713,6 +727,60 @@ export class XPOrb {
     ctx.fillStyle = "#a5f3fc";
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+export class TrailPatch {
+  constructor(x, y, radius, tickDamage, life, color) {
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.tickDamage = tickDamage;
+    this.life = life;
+    this.maxLife = life;
+    this.color = color;
+    this.hitTimers = new Map();
+    this.flicker = randRange(0, Math.PI * 2);
+  }
+
+  update(dt, game) {
+    this.life -= dt;
+    this.flicker += dt * 6;
+    for (const e of game.enemies) {
+      const cd = this.hitTimers.get(e.id) ?? 0;
+      if (cd > 0) {
+        this.hitTimers.set(e.id, cd - dt);
+        continue;
+      }
+      if (circlesOverlap(this.x, this.y, this.radius, e.x, e.y, e.radius)) {
+        game.damageEnemy(e, this.tickDamage);
+        this.hitTimers.set(e.id, 0.4);
+      }
+    }
+    const boss = game.boss;
+    if (boss) {
+      const cd = this.hitTimers.get(boss.id) ?? 0;
+      if (cd <= 0 && circlesOverlap(this.x, this.y, this.radius, boss.x, boss.y, boss.radius)) {
+        game.damageBoss(this.tickDamage);
+        this.hitTimers.set(boss.id, 0.4);
+      } else if (cd > 0) {
+        this.hitTimers.set(boss.id, cd - dt);
+      }
+    }
+  }
+
+  draw(ctx) {
+    const t = clamp(this.life / this.maxLife, 0, 1);
+    const flick = 0.85 + Math.sin(this.flicker) * 0.15;
+    ctx.save();
+    ctx.globalAlpha = t * 0.55;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius * flick, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }

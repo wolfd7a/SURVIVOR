@@ -103,6 +103,40 @@ export const WEAPON_DEFS = {
       },
     },
   },
+  trail: {
+    name: "Ember Trail",
+    icon: "\u{1F525}",
+    maxLevel: 8,
+    stats(level) {
+      return {
+        dropInterval: Math.max(0.12, 0.32 - level * 0.02),
+        radius: 26 + level * 2,
+        tickDamage: 4 + level * 1.8,
+        segmentLife: 1.6 + level * 0.1,
+      };
+    },
+    describe(level) {
+      const s = this.stats(level);
+      return `Leaves burning ground behind you, ${Math.round(s.tickDamage)} dmg/tick`;
+    },
+    evolved: {
+      name: "Wildfire Wake",
+      icon: "\u{1F32A}\u{FE0F}",
+      color: "#fdba74",
+      stats(level) {
+        return {
+          dropInterval: Math.max(0.08, 0.22 - level * 0.015),
+          radius: 36 + level * 2.6,
+          tickDamage: (4 + level * 1.8) * 1.7,
+          segmentLife: 2.2 + level * 0.12,
+        };
+      },
+      describe(level) {
+        const s = this.stats(level);
+        return `Evolved: wider, longer-burning trail for ${Math.round(s.tickDamage)} dmg/tick`;
+      },
+    },
+  },
 };
 
 export const WEAPON_KEYS = Object.keys(WEAPON_DEFS);

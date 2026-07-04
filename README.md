@@ -66,25 +66,32 @@ screen (`js/lore.js`).
   run-independent bonuses — more max HP, move speed, damage, pickup radius,
   armor, attack speed. These persist across browser sessions (`localStorage`)
   and apply to every future run, so each death still moves you forward.
-- Max out a weapon (level 8) and its next level-up choice becomes a
-  guaranteed **Evolution** — Arcane Bolt becomes the piercing **Starfall
-  Lance**, Void Orbs becomes the bigger/faster **Void Halo**, and Shock Nova
-  becomes the huge-radius **Cataclysm**. Each evolution gets its own color
-  and a real damage/behavior jump, not just bigger numbers.
+- Four weapons to find and mix: **Arcane Bolt** (auto-aimed piercing shots),
+  **Void Orbs** (orbiting melee shield), **Shock Nova** (periodic self-centered
+  pulse), and **Ember Trail** (burning ground left behind while you move —
+  the one build that rewards kiting instead of standing still). Max any
+  weapon out (level 8) and its next level-up becomes a guaranteed
+  **Evolution** into a stronger, distinctly-colored form (Starfall Lance,
+  Void Halo, Cataclysm, Wildfire Wake) with a real behavior jump, not just
+  bigger numbers.
 - Starting ~45 seconds in, and roughly every 40-60 seconds after that, an
   **Elite** spawns — a buffed variant of a regular enemy type (4x HP, tougher
   hits, marked with a spinning gold ring and a gold health bar) that drops
   bonus Cores and XP. A minimap in the corner shows elites, regular enemies,
   and the boss even when they're off-screen in the (fairly large) arena.
 
-## Sound
+## Sound & accessibility
 
 All audio is synthesized live with the Web Audio API (`js/audio.js`) — no
 sound files. Hits, kills, level-ups, boss spawns/stuns/kills, and a low
 ambient drone during runs are all generated from oscillators and a noise
-buffer. There's a mute toggle on the main menu; the preference persists
+buffer. The main menu has a mute toggle and a volume slider, both persisted
 across sessions. Sound only starts after your first click/tap, per browser
 autoplay rules.
+
+There's also a **Reduce screen shake & flash** checkbox (`js/settings.js`)
+for players sensitive to the hit-stop/flash/shake feedback — it scales all
+three down to a fraction rather than removing feedback entirely.
 
 ## Art & mobile
 
@@ -122,9 +129,10 @@ css/style.css        visual styling for HUD, overlays, joystick, mobile controls
 js/
   utils.js           math/random helpers
   save.js            localStorage persistence + permanent upgrade definitions
-  weapons.js          weapon stat curves + evolved forms (Arcane Bolt / Void Orbs / Shock Nova)
+  weapons.js          weapon stat curves + evolved forms (4 weapons)
   lore.js            backstory + per-boss lore text
   audio.js           Web Audio synthesized SFX + ambient drone (no audio files)
+  settings.js        persisted accessibility settings (reduce effects)
   entities.js        Player, Enemy, Projectile, XPOrb, Particle + all procedural art
   boss.js            Boss state machine (slam / charge / weak-point patterns) + boss art
   upgrades.js        level-up card pool generation (incl. weapon evolutions)

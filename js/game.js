@@ -12,6 +12,7 @@ import { Boss } from "./boss.js";
 import { generateChoices } from "./upgrades.js";
 import { getPermanentBonuses, recordRunResult } from "./save.js";
 import { audio } from "./audio.js";
+import { getReduceEffects } from "./settings.js";
 
 const ARENA_SIZE = 4800;
 const VIEW_W = 960;
@@ -94,6 +95,7 @@ export class Game {
     this.particles = [];
     this.texts = [];
     this.novaPulses = [];
+    this.trailPatches = [];
     this.boss = null;
     this.time = 0;
     this.spawnTimer = 0.8;
@@ -162,14 +164,17 @@ export class Game {
   }
 
   addScreenShake(mag) {
+    if (getReduceEffects()) mag *= 0.15;
     this.shake = Math.min(24, this.shake + mag);
   }
 
   triggerHitStop(duration) {
+    if (getReduceEffects()) duration *= 0.2;
     this.hitStop = Math.max(this.hitStop, duration);
   }
 
   triggerFlash(color, duration) {
+    if (getReduceEffects()) duration *= 0.3;
     this.flashColor = color;
     this.flashTimer = duration;
     this.flashMaxTimer = duration;
@@ -326,6 +331,9 @@ export class Game {
     this.novaPulses = this.novaPulses.filter((n) => n.life > 0);
     for (const n of this.novaPulses) n.radius = n.maxRadius * (1 - Math.max(0, n.life) / 0.35);
 
+    for (const t of this.trailPatches) t.update(dt, this);
+    this.trailPatches = this.trailPatches.filter((t) => t.life > 0);
+
     if (this.boss) {
       this.boss.update(dt, this);
     } else {
@@ -384,6 +392,8 @@ export class Game {
     ctx.translate(VIEW_W / 2 - this.camera.x + shakeX, VIEW_H / 2 - this.camera.y + shakeY);
 
     this.drawBackground(ctx);
+
+    for (const t of this.trailPatches) t.draw(ctx);
 
     for (const n of this.novaPulses) {
       ctx.save();

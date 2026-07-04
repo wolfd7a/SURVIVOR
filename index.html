@@ -28,7 +28,14 @@
       <button id="btn-start" class="btn primary">Start Run</button>
       <button id="btn-shop" class="btn">Upgrade Shop</button>
       <button id="btn-story" class="btn">Story</button>
-      <button id="btn-mute" class="btn" type="button">Sound: On</button>
+      <div class="settings-row">
+        <button id="btn-mute" class="btn" type="button">Sound: On</button>
+        <input id="volume-slider" type="range" min="0" max="100" value="50" aria-label="Volume" />
+      </div>
+      <label class="settings-checkbox">
+        <input id="reduce-effects" type="checkbox" />
+        Reduce screen shake &amp; flash
+      </label>
       <p class="hint">WASD / arrows &middot; or the on-screen stick on touch devices. Weapons fire automatically.</p>
     </div>
 
