@@ -10,11 +10,13 @@ import {
 } from "./entities.js";
 import { Boss } from "./boss.js";
 import { generateChoices } from "./upgrades.js";
-import { getPermanentBonuses, recordRunResult, recordBossDefeat } from "./save.js";
+import { getPermanentBonuses, recordRunResult, recordBossDefeat, getSelectedCharacter } from "./save.js";
+import { CHARACTERS } from "./characters.js";
 
 const EPILOGUE_KEY = "nightfallSwarm.seenEpilogue";
 import { audio } from "./audio.js";
 import { getReduceEffects } from "./settings.js";
+import { drawGlowCircle } from "./fx.js";
 
 const ARENA_SIZE = 4800;
 const VIEW_W = 960;
@@ -79,6 +81,7 @@ export class Game {
     this.arenaSize = ARENA_SIZE;
     this.input = { left: false, right: false, up: false, down: false };
     this.touchVector = { x: 0, y: 0 };
+    this.gamepadVector = { x: 0, y: 0 };
     this.state = "menu";
     this.shake = 0;
     this.hitStop = 0;
@@ -89,7 +92,7 @@ export class Game {
 
   startRun() {
     const bonuses = getPermanentBonuses();
-    this.player = new Player(bonuses);
+    this.player = new Player(bonuses, CHARACTERS[getSelectedCharacter()]);
     this.enemies = [];
     this.projectiles = [];
     this.enemyProjectiles = [];
@@ -98,6 +101,7 @@ export class Game {
     this.texts = [];
     this.novaPulses = [];
     this.trailPatches = [];
+    this.lightningArcs = [];
     this.boss = null;
     this.time = 0;
     this.spawnTimer = 0.8;
@@ -350,6 +354,9 @@ export class Game {
     for (const t of this.trailPatches) t.update(dt, this);
     this.trailPatches = this.trailPatches.filter((t) => t.life > 0);
 
+    for (const a of this.lightningArcs) a.life -= dt;
+    this.lightningArcs = this.lightningArcs.filter((a) => a.life > 0);
+
     if (this.boss) {
       this.boss.update(dt, this);
     } else {
@@ -420,6 +427,8 @@ export class Game {
       ctx.stroke();
       ctx.restore();
     }
+
+    this.drawLightning(ctx);
 
     for (const o of this.xpOrbs) o.draw(ctx);
     for (const p of this.enemies) p.draw(ctx);
@@ -502,18 +511,47 @@ export class Game {
     ctx.restore();
   }
 
+  drawLightning(ctx) {
+    for (const arc of this.lightningArcs) {
+      const alpha = clamp(arc.life / arc.maxLife, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      for (const [width, color] of [
+        [4, arc.color],
+        [1.5, "#ffffff"],
+      ]) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.beginPath();
+        for (let i = 0; i < arc.points.length - 1; i++) {
+          const a = arc.points[i];
+          const b = arc.points[i + 1];
+          ctx.moveTo(a.x, a.y);
+          // two jittered midpoints per segment give the crackle
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = -dy / len;
+          const ny = dx / len;
+          const j1 = (Math.random() - 0.5) * 16;
+          const j2 = (Math.random() - 0.5) * 16;
+          ctx.lineTo(a.x + dx * 0.33 + nx * j1, a.y + dy * 0.33 + ny * j1);
+          ctx.lineTo(a.x + dx * 0.66 + nx * j2, a.y + dy * 0.66 + ny * j2);
+          ctx.lineTo(b.x, b.y);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
   drawAmbient(ctx) {
     for (const e of this.ambientEmbers) {
       const sway = Math.sin(e.phase) * 8;
-      ctx.save();
-      ctx.globalAlpha = 0.35 + Math.sin(e.phase * 1.7) * 0.25;
-      ctx.shadowColor = "#fbbf24";
-      ctx.shadowBlur = 6;
-      ctx.fillStyle = "#fde68a";
-      ctx.beginPath();
-      ctx.arc(e.x + sway, e.y, e.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      const alpha = 0.35 + Math.sin(e.phase * 1.7) * 0.25;
+      drawGlowCircle(ctx, e.x + sway, e.y, e.size, "#fbbf24", "#fde68a", alpha);
     }
   }
 

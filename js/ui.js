@@ -1,5 +1,15 @@
 import { formatTime, clamp } from "./utils.js";
-import { getSave, PERMANENT_UPGRADES, upgradeCost, buyUpgrade } from "./save.js";
+import {
+  getSave,
+  PERMANENT_UPGRADES,
+  upgradeCost,
+  buyUpgrade,
+  isCharacterUnlocked,
+  unlockCharacter,
+  getSelectedCharacter,
+  selectCharacter,
+} from "./save.js";
+import { CHARACTERS, CHARACTER_KEYS } from "./characters.js";
 import { STORY_TITLE, STORY_PARAGRAPHS, BOSS_LORE, EPILOGUE_TITLE, EPILOGUE_PARAGRAPHS } from "./lore.js";
 import { WEAPON_DEFS } from "./weapons.js";
 
@@ -49,10 +59,52 @@ export function showEpilogue(onContinue) {
   btn.addEventListener("click", handler);
 }
 
+function renderCharacterRow() {
+  const row = el("character-row");
+  row.innerHTML = "";
+  const selected = getSelectedCharacter();
+  for (const key of CHARACTER_KEYS) {
+    const def = CHARACTERS[key];
+    const unlocked = isCharacterUnlocked(key);
+    const card = document.createElement("div");
+    card.className =
+      "char-card" + (key === selected ? " selected" : "") + (unlocked ? "" : " locked");
+    const icon = document.createElement("div");
+    icon.className = "icon";
+    icon.textContent = def.icon;
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = def.name;
+    const desc = document.createElement("div");
+    desc.className = "desc";
+    desc.textContent = def.desc;
+    card.append(icon, name, desc);
+    if (!unlocked) {
+      const unlock = document.createElement("div");
+      unlock.className = "unlock";
+      unlock.textContent = `Unlock: ${def.cost} Cores`;
+      card.appendChild(unlock);
+    }
+    card.addEventListener("click", () => {
+      if (isCharacterUnlocked(key)) {
+        selectCharacter(key);
+      } else if (!unlockCharacter(key, def.cost)) {
+        return; // not enough cores; leave the row as-is
+      } else {
+        selectCharacter(key);
+      }
+      refreshMenuStats();
+      renderCharacterRow();
+    });
+    row.appendChild(card);
+  }
+}
+
 export function showMenu() {
   hideAllOverlays();
   hud.classList.add("hidden");
   refreshMenuStats();
+  renderCharacterRow();
   overlays.menu.classList.remove("hidden");
 }
 

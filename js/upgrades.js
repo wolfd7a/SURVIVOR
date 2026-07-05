@@ -82,7 +82,7 @@ export function generateChoices(player) {
     const def = WEAPON_DEFS[key];
     const level = player.weaponLevel(key);
     if (level === 0) {
-      if (player.weapons.length >= 3) continue;
+      if (player.weapons.length >= 4) continue;
       pool.push({
         id: `weapon-new-${key}`,
         icon: def.icon,

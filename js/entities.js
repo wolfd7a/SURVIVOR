@@ -1,6 +1,7 @@
 import { clamp, dist, angleTo, circlesOverlap, randRange, randInt } from "./utils.js";
 import { WEAPON_DEFS, weaponStats } from "./weapons.js";
 import { audio } from "./audio.js";
+import { drawGlowCircle } from "./fx.js";
 
 let nextId = 1;
 
@@ -17,27 +18,31 @@ function drawLimb(ctx, x, y, angleDeg, length, width, color) {
   ctx.stroke();
 }
 
+const DEFAULT_PALETTE = { cloak: "#2d1b4e", torso: "#c4b5fd", head: "#ddd6fe", limbs: "#3f2d63", aura: "139,92,246" };
+
 export class Player {
-  constructor(bonuses) {
+  constructor(bonuses, character = null) {
     this.id = nextId++;
     this.x = 0;
     this.y = 0;
     this.radius = 14;
-    this.baseSpeed = 190 * bonuses.moveSpeedMult;
-    this.maxHp = 100 + bonuses.maxHpBonus;
+    this.baseSpeed = 190 * bonuses.moveSpeedMult * (character?.speedMult ?? 1);
+    this.maxHp = Math.round((100 + bonuses.maxHpBonus) * (character?.hpMult ?? 1));
     this.hp = this.maxHp;
     this.level = 1;
     this.xp = 0;
     this.xpToNext = xpForLevel(1);
     this.magnetRadius = 70 + bonuses.magnetBonus;
     this.regen = 0;
-    this.armor = clamp(bonuses.armorBonus, 0, 0.5);
-    this.damageMult = bonuses.damageMult;
+    this.armor = clamp(bonuses.armorBonus + (character?.armorBonus ?? 0), 0, 0.5);
+    this.damageMult = bonuses.damageMult * (character?.damageMult ?? 1);
     this.cooldownMult = bonuses.cooldownMult;
     this.invulnTimer = 0;
     this.hitFlash = 0;
-    this.weapons = [{ key: "bolt", level: 1, evolved: false }];
-    this.weaponTimers = { bolt: 0.3 };
+    this.palette = character?.palette ?? DEFAULT_PALETTE;
+    const startWeapon = character?.startWeapon ?? "bolt";
+    this.weapons = [{ key: startWeapon, level: 1, evolved: false }];
+    this.weaponTimers = { [startWeapon]: 0.3 };
     this.orbitAngle = 0;
     this.kills = 0;
     this.facing = 0;
@@ -105,9 +110,13 @@ export class Player {
 
     let mx = 0, my = 0;
     const touch = game.touchVector;
+    const pad = game.gamepadVector;
     if (touch && (touch.x !== 0 || touch.y !== 0)) {
       mx = touch.x;
       my = touch.y;
+    } else if (pad && (pad.x !== 0 || pad.y !== 0)) {
+      mx = pad.x;
+      my = pad.y;
     } else {
       if (game.input.left) mx -= 1;
       if (game.input.right) mx += 1;
@@ -157,6 +166,13 @@ export class Player {
           this.weaponTimers.trail = stats.dropInterval * this.cooldownMult;
           dropTrailPatch(this, stats, game);
         }
+      } else if (w.key === "storm") {
+        this.weaponTimers.storm = (this.weaponTimers.storm ?? 0.3) - dt;
+        if (this.weaponTimers.storm <= 0) {
+          const fired = fireStorm(this, stats, game);
+          // Nothing in range: retry shortly instead of wasting the full cooldown.
+          this.weaponTimers.storm = fired ? stats.cooldown * this.cooldownMult : 0.15;
+        }
       }
     }
   }
@@ -181,10 +197,11 @@ export class Player {
     ctx.scale(faceDir, 1);
 
     // ember aura
+    const pal = this.palette;
     const auraPulse = 0.85 + Math.sin(this.animTime * 2.2) * 0.15;
     const auraGrad = ctx.createRadialGradient(0, 4, 2, 0, 4, this.radius * 2.4 * auraPulse);
-    auraGrad.addColorStop(0, "rgba(139,92,246,0.35)");
-    auraGrad.addColorStop(1, "rgba(139,92,246,0)");
+    auraGrad.addColorStop(0, `rgba(${pal.aura},0.35)`);
+    auraGrad.addColorStop(1, `rgba(${pal.aura},0)`);
     ctx.fillStyle = auraGrad;
     ctx.beginPath();
     ctx.arc(0, 4, this.radius * 2.4 * auraPulse, 0, Math.PI * 2);
@@ -197,7 +214,7 @@ export class Player {
     ctx.fill();
 
     // cloak trailing behind
-    ctx.fillStyle = "#2d1b4e";
+    ctx.fillStyle = pal.cloak;
     ctx.beginPath();
     ctx.moveTo(-this.radius * 0.6, -this.radius * 0.2);
     ctx.quadraticCurveTo(
@@ -211,12 +228,12 @@ export class Player {
     ctx.fill();
 
     // legs
-    const skin = this.hitFlash > 0 ? "#fca5a5" : "#3f2d63";
+    const skin = this.hitFlash > 0 ? "#fca5a5" : pal.limbs;
     drawLimb(ctx, 4, this.radius * 0.5, legSwing * 8, this.radius * 0.9, 4.5, skin);
     drawLimb(ctx, -4, this.radius * 0.5, -legSwing * 8, this.radius * 0.9, 4.5, skin);
 
     // torso
-    ctx.fillStyle = this.hitFlash > 0 ? "#fecaca" : "#c4b5fd";
+    ctx.fillStyle = this.hitFlash > 0 ? "#fecaca" : pal.torso;
     ctx.beginPath();
     ctx.ellipse(0, -this.radius * 0.15, this.radius * 0.62, this.radius * 0.78, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -226,7 +243,7 @@ export class Player {
 
     // arm holding the ember
     const armSwing = this.moving ? Math.sin(this.animTime * 1.6 + Math.PI) * 6 : 0;
-    drawLimb(ctx, this.radius * 0.4, -this.radius * 0.1, 30 + armSwing, this.radius * 0.75, 4, "#3f2d63");
+    drawLimb(ctx, this.radius * 0.4, -this.radius * 0.1, 30 + armSwing, this.radius * 0.75, 4, pal.limbs);
     const emberGlow = 0.6 + Math.sin(this.animTime * 5) * 0.4;
     ctx.save();
     ctx.shadowColor = "#f59e0b";
@@ -238,11 +255,11 @@ export class Player {
     ctx.restore();
 
     // head + hood
-    ctx.fillStyle = this.hitFlash > 0 ? "#fecaca" : "#ddd6fe";
+    ctx.fillStyle = this.hitFlash > 0 ? "#fecaca" : pal.head;
     ctx.beginPath();
     ctx.arc(0, -this.radius * 0.95, this.radius * 0.48, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#2d1b4e";
+    ctx.fillStyle = pal.cloak;
     ctx.beginPath();
     ctx.arc(0, -this.radius * 1.1, this.radius * 0.5, Math.PI, 0);
     ctx.fill();
@@ -266,14 +283,7 @@ export class Player {
         const a = this.orbitAngle * stats.angularSpeed + (i * Math.PI * 2) / stats.count;
         const ox = this.x + Math.cos(a) * stats.radius;
         const oy = this.y + Math.sin(a) * stats.radius;
-        ctx.save();
-        ctx.shadowColor = color;
-        ctx.shadowBlur = evolved ? 16 : 10;
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(ox, oy, orbRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        drawGlowCircle(ctx, ox, oy, orbRadius, color);
       }
     }
   }
@@ -321,6 +331,46 @@ function fireNova(player, stats, game) {
     game.damageBoss(stats.damage * player.damageMult);
   }
   game.addScreenShake(3);
+}
+
+function fireStorm(player, stats, game) {
+  const candidates = game.enemies.slice();
+  if (game.boss) candidates.push(game.boss);
+  const visited = new Set();
+  const points = [{ x: player.x, y: player.y }];
+  let sx = player.x;
+  let sy = player.y;
+  let reach = stats.range;
+  const boss = game.boss;
+  const hits = [];
+  for (let hop = 0; hop <= stats.chains; hop++) {
+    let best = null;
+    let bestD = Infinity;
+    for (const t of candidates) {
+      if (visited.has(t.id) || t.hp <= 0) continue;
+      const d = dist(sx, sy, t.x, t.y);
+      if (d < bestD && d <= reach) {
+        best = t;
+        bestD = d;
+      }
+    }
+    if (!best) break;
+    visited.add(best.id);
+    points.push({ x: best.x, y: best.y });
+    hits.push(best);
+    sx = best.x;
+    sy = best.y;
+    reach = stats.chainRange;
+  }
+  if (!hits.length) return false;
+  const dmg = stats.damage * player.damageMult;
+  for (const t of hits) {
+    if (t === boss) game.damageBoss(dmg);
+    else game.damageEnemy(t, dmg, { knockback: 60, angle: angleTo(player.x, player.y, t.x, t.y) });
+  }
+  const color = player.isEvolved("storm") ? WEAPON_DEFS.storm.evolved.color : "#c7d2fe";
+  game.lightningArcs.push({ points, life: 0.16, maxLife: 0.16, color });
+  return true;
 }
 
 function dropTrailPatch(player, stats, game) {
@@ -497,13 +547,10 @@ export class Enemy {
     ctx.arc(r * 0.35, -r * 0.55, r * 0.42, 0, Math.PI * 2);
     ctx.fill();
     // glowing eyes
-    ctx.fillStyle = "#f87171";
-    ctx.shadowColor = "#f87171";
-    ctx.shadowBlur = 5;
+    ctx.fillStyle = "#ff8f8f";
     ctx.beginPath();
-    ctx.arc(r * 0.5, -r * 0.58, 2, 0, Math.PI * 2);
+    ctx.arc(r * 0.5, -r * 0.58, 2.4, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
     // legs
     drawLimb(ctx, r * 0.3, r * 0.6, 10 + shuffle * 4, r * 0.6, 4, flashed ? "#fff" : "#5c1010");
     drawLimb(ctx, -r * 0.3, r * 0.6, -10 - shuffle * 4, r * 0.6, 4, flashed ? "#fff" : "#5c1010");
@@ -532,12 +579,9 @@ export class Enemy {
     ctx.fill();
     // eye
     ctx.fillStyle = "#fef08a";
-    ctx.shadowColor = "#fef08a";
-    ctx.shadowBlur = 4;
     ctx.beginPath();
-    ctx.arc(r * 1.25, -r * 0.05, 1.8, 0, Math.PI * 2);
+    ctx.arc(r * 1.25, -r * 0.05, 2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
     // tail
     ctx.strokeStyle = flashed ? "#fff" : "#7c2d12";
     ctx.lineWidth = 3;
@@ -575,13 +619,10 @@ export class Enemy {
     ctx.arc(0, -r * 0.5, r * 0.32, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#fbbf24";
-    ctx.shadowColor = "#fbbf24";
-    ctx.shadowBlur = 4;
     ctx.beginPath();
-    ctx.arc(-r * 0.1, -r * 0.52, 2, 0, Math.PI * 2);
-    ctx.arc(r * 0.1, -r * 0.52, 2, 0, Math.PI * 2);
+    ctx.arc(-r * 0.1, -r * 0.52, 2.2, 0, Math.PI * 2);
+    ctx.arc(r * 0.1, -r * 0.52, 2.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
   }
 
   drawWeeper(ctx, flashed) {
@@ -667,14 +708,7 @@ export class Projectile {
   }
 
   draw(ctx) {
-    ctx.save();
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    drawGlowCircle(ctx, this.x, this.y, this.radius, this.color);
   }
 }
 
@@ -701,14 +735,7 @@ export class EnemyProjectile {
   }
 
   draw(ctx) {
-    ctx.save();
-    ctx.shadowColor = "#c084fc";
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = "#e9d5ff";
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    drawGlowCircle(ctx, this.x, this.y, this.radius, "#c084fc", "#e9d5ff");
   }
 }
 
@@ -740,14 +767,7 @@ export class XPOrb {
   }
 
   draw(ctx) {
-    ctx.save();
-    ctx.shadowColor = "#22d3ee";
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = "#a5f3fc";
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    drawGlowCircle(ctx, this.x, this.y, this.radius, "#22d3ee", "#a5f3fc");
   }
 }
 
@@ -793,15 +813,7 @@ export class TrailPatch {
   draw(ctx) {
     const t = clamp(this.life / this.maxLife, 0, 1);
     const flick = 0.85 + Math.sin(this.flicker) * 0.15;
-    ctx.save();
-    ctx.globalAlpha = t * 0.55;
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = 10;
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius * flick, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    drawGlowCircle(ctx, this.x, this.y, this.radius * flick, this.color, this.color, t * 0.55);
   }
 }
 

@@ -4,6 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Nightfall Swarm</title>
+<meta name="theme-color" content="#0a0a12" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="assets/icon-192.png" />
 <link rel="stylesheet" href="css/style.css" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌙</text></svg>" />
 </head>
@@ -26,12 +29,14 @@
         <div><span id="stat-runs">0</span><label>Runs</label></div>
         <div><span id="stat-bosses">0</span><label>Bosses felled</label></div>
       </div>
+      <div id="character-row" class="character-row"></div>
       <button id="btn-start" class="btn primary">Start Run</button>
       <button id="btn-shop" class="btn">Upgrade Shop</button>
       <button id="btn-story" class="btn">Story</button>
       <div class="settings-row">
         <button id="btn-mute" class="btn" type="button">Sound: On</button>
         <input id="volume-slider" type="range" min="0" max="100" value="50" aria-label="Volume" />
+        <button id="btn-fullscreen" class="btn" type="button" title="Fullscreen (F)">&#x26F6;</button>
       </div>
       <label class="settings-checkbox">
         <input id="reduce-effects" type="checkbox" />

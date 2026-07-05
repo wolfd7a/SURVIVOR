@@ -3,9 +3,13 @@
 A browser-based, Vampire Survivors-inspired arena game. Auto-firing weapons,
 escalating hordes, and periodic bosses whose attacks require you to actually
 read the arena and move to the right spot at the right time. Progress persists
-across deaths: cores earned each run buy permanent upgrades for future runs.
+across deaths: cores earned each run buy permanent upgrades, and unlock new
+playable characters, for future runs.
 
-No build step, no dependencies — plain HTML/CSS/JS.
+No build step, no dependencies — plain HTML/CSS/JS. Plays with keyboard,
+touch, or **gamepad**; renders at native pixel density (crisp on retina/4K);
+installable as a PWA and works offline after the first load; ships to
+desktop/Steam via the included Electron shell.
 
 ## Play it
 
@@ -16,10 +20,10 @@ python3 -m http.server 8000
 Then open `http://localhost:8000` in a browser (ES modules require serving
 over `http://`, not `file://`).
 
-**Controls:** WASD or arrow keys to move, or drag anywhere on screen with a
-mouse/finger to use the virtual joystick (built for touch, works with mouse
-too). Weapons fire automatically at the nearest enemy. `Esc` or the on-screen
-pause button pauses.
+**Controls:** WASD/arrows, gamepad left stick or d-pad, or drag anywhere on
+screen for the virtual joystick (touch or mouse). Weapons fire automatically.
+`Esc`/Start pauses; on a pad, d-pad + A picks level-up cards and A confirms
+menus. `F` or the menu button toggles fullscreen.
 
 ## Story
 
@@ -38,6 +42,17 @@ for a one-time **epilogue** beat closing out the four-boss arc — then hands
 control right back, because the dark doesn't actually end and neither does
 the run. Bosses keep spawning (and scaling up) past that point for however
 long you can last.
+
+## Characters
+
+Three playable characters, each with its own palette, stat spread, and
+starting weapon — unlocked with Cores from the main menu:
+
+- **The Cinderborn** (free) — balanced; starts with Arcane Bolt.
+- **The Shade** (150 Cores) — +22% speed, +8% damage, but 72 max HP; starts
+  with Ember Trail. The kiting character.
+- **The Bulwark** (150 Cores) — 140 HP and 8% innate armor at -16% speed and
+  -5% damage; starts with Void Orbs. The brawler.
 
 ## Core loop
 
@@ -72,14 +87,14 @@ long you can last.
   run-independent bonuses — more max HP, move speed, damage, pickup radius,
   armor, attack speed. These persist across browser sessions (`localStorage`)
   and apply to every future run, so each death still moves you forward.
-- Four weapons to find and mix: **Arcane Bolt** (auto-aimed piercing shots),
-  **Void Orbs** (orbiting melee shield), **Shock Nova** (periodic self-centered
-  pulse), and **Ember Trail** (burning ground left behind while you move —
-  the one build that rewards kiting instead of standing still). Max any
-  weapon out (level 8) and its next level-up becomes a guaranteed
-  **Evolution** into a stronger, distinctly-colored form (Starfall Lance,
-  Void Halo, Cataclysm, Wildfire Wake) with a real behavior jump, not just
-  bigger numbers.
+- Five weapons, carry up to four: **Arcane Bolt** (auto-aimed piercing
+  shots), **Void Orbs** (orbiting melee shield), **Shock Nova** (periodic
+  self-centered pulse), **Ember Trail** (burning ground left behind while
+  you move), and **Stormbrand** (chain lightning arcing between packed
+  enemies — the anti-swarm pick). Max any weapon out (level 8) and its next
+  level-up becomes a guaranteed **Evolution** into a stronger,
+  distinctly-colored form (Starfall Lance, Void Halo, Cataclysm, Wildfire
+  Wake, Tempest) with a real behavior jump, not just bigger numbers.
 - Starting ~45 seconds in, and roughly every 40-60 seconds after that, an
   **Elite** spawns — a buffed variant of a regular enemy type (4x HP, tougher
   hits, marked with a spinning gold ring and a gold health bar) that drops
@@ -136,6 +151,25 @@ under the timer, and pausing shows the full loadout — every weapon's live
 stats plus your accumulated bonuses (damage, attack speed, armor, regen,
 pickup radius, move speed).
 
+## Platform & shipping
+
+- **Gamepad**: standard-mapping pads work everywhere — stick/d-pad to move,
+  Start to pause, A to confirm and pick level-up cards (d-pad to choose).
+- **High-DPI**: the canvas backing store scales to `devicePixelRatio`
+  (capped at 2.5x), so the game is pixel-crisp on retina and 4K displays.
+- **Performance**: all high-count glow effects (projectiles, orbs, embers,
+  fire patches, enemy eyes) render from pre-built gradient sprites instead
+  of per-frame canvas `shadowBlur`, which is the classic canvas frame-rate
+  killer at horde scale.
+- **PWA**: `manifest.json` + a network-first service worker make the game
+  installable (Add to Home Screen / desktop install) and fully playable
+  offline after the first visit. Icons are generated, not stock.
+- **Steam / desktop**: `electron/` contains a minimal shell that loads the
+  same web build in a desktop window (`cd electron && npm install && npm
+  start`). Package with electron-builder for Steam depots. The shell is
+  standard boilerplate — verify locally before shipping; CI here only tests
+  the browser build.
+
 ## Project layout
 
 ```
@@ -144,8 +178,10 @@ css/style.css        visual styling for HUD, overlays, joystick, mobile controls
 js/
   utils.js           math/random helpers
   save.js            localStorage persistence + permanent upgrade definitions
-  weapons.js          weapon stat curves + evolved forms (4 weapons)
+  weapons.js          weapon stat curves + evolved forms (5 weapons)
   lore.js            backstory + per-boss lore text
+  characters.js      playable character definitions (stats, palettes, unlocks)
+  fx.js              cached glow-sprite renderer (perf)
   audio.js           Web Audio synthesized SFX + ambient drone (no audio files)
   settings.js        persisted accessibility settings (reduce effects)
   entities.js        Player, Enemy, Projectile, XPOrb, Particle + all procedural art

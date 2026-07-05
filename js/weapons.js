@@ -137,6 +137,42 @@ export const WEAPON_DEFS = {
       },
     },
   },
+  storm: {
+    name: "Stormbrand",
+    icon: "⚡",
+    maxLevel: 8,
+    stats(level) {
+      return {
+        cooldown: Math.max(0.85, 1.9 - level * 0.11),
+        damage: 11 + level * 4.5,
+        chains: 2 + Math.floor(level / 2),
+        range: 260 + level * 10,
+        chainRange: 150 + level * 6,
+      };
+    },
+    describe(level) {
+      const s = this.stats(level);
+      return `Zaps the nearest foe for ${Math.round(s.damage)} dmg, arcing to ${s.chains} more`;
+    },
+    evolved: {
+      name: "Tempest",
+      icon: "\u{1F329}\u{FE0F}",
+      color: "#a5b4fc",
+      stats(level) {
+        return {
+          cooldown: Math.max(0.55, 1.3 - level * 0.08),
+          damage: (11 + level * 4.5) * 1.55,
+          chains: 5 + Math.floor(level / 2),
+          range: 320 + level * 12,
+          chainRange: 190 + level * 7,
+        };
+      },
+      describe(level) {
+        const s = this.stats(level);
+        return `Evolved: ${Math.round(s.damage)} dmg arcs chaining to ${s.chains} foes`;
+      },
+    },
+  },
 };
 
 export const WEAPON_KEYS = Object.keys(WEAPON_DEFS);

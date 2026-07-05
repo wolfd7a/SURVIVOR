@@ -16,6 +16,8 @@ function defaultSave() {
     bestTime: 0,
     bestLevel: 0,
     totalBossesDefeated: 0,
+    unlockedCharacters: ["cinder"],
+    selectedCharacter: "cinder",
     ranks: { maxHp: 0, moveSpeed: 0, damage: 0, magnet: 0, armor: 0, cooldown: 0 },
   };
 }
@@ -68,6 +70,29 @@ export function recordRunResult({ timeSurvived, level, coresEarned }) {
 export function recordBossDefeat() {
   state.totalBossesDefeated += 1;
   persist();
+}
+
+export function isCharacterUnlocked(key) {
+  return state.unlockedCharacters.includes(key);
+}
+
+export function unlockCharacter(key, cost) {
+  if (isCharacterUnlocked(key) || state.cores < cost) return false;
+  state.cores -= cost;
+  state.unlockedCharacters.push(key);
+  persist();
+  return true;
+}
+
+export function getSelectedCharacter() {
+  return isCharacterUnlocked(state.selectedCharacter) ? state.selectedCharacter : "cinder";
+}
+
+export function selectCharacter(key) {
+  if (!isCharacterUnlocked(key)) return false;
+  state.selectedCharacter = key;
+  persist();
+  return true;
 }
 
 export function getPermanentBonuses() {

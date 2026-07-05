@@ -1,0 +1,40 @@
+export const CHARACTERS = {
+  cinder: {
+    name: "The Cinderborn",
+    icon: "\u{1F56F}\u{FE0F}",
+    desc: "The one the ember chose. Balanced.",
+    startWeapon: "bolt",
+    hpMult: 1,
+    speedMult: 1,
+    damageMult: 1,
+    armorBonus: 0,
+    cost: 0,
+    palette: { cloak: "#2d1b4e", torso: "#c4b5fd", head: "#ddd6fe", limbs: "#3f2d63", aura: "139,92,246" },
+  },
+  shade: {
+    name: "The Shade",
+    icon: "\u{1F32B}\u{FE0F}",
+    desc: "Fast and vicious, thin as smoke. Starts with Ember Trail.",
+    startWeapon: "trail",
+    hpMult: 0.72,
+    speedMult: 1.22,
+    damageMult: 1.08,
+    armorBonus: 0,
+    cost: 150,
+    palette: { cloak: "#0f2e2e", torso: "#99f6e4", head: "#ccfbf1", limbs: "#134e4a", aura: "45,212,191" },
+  },
+  bulwark: {
+    name: "The Bulwark",
+    icon: "\u{1F6E1}\u{FE0F}",
+    desc: "Slow, huge health, innate armor. Starts with Void Orbs.",
+    startWeapon: "orbit",
+    hpMult: 1.4,
+    speedMult: 0.84,
+    damageMult: 0.95,
+    armorBonus: 0.08,
+    cost: 150,
+    palette: { cloak: "#3b2408", torso: "#fcd34d", head: "#fde68a", limbs: "#78350f", aura: "245,158,11" },
+  },
+};
+
+export const CHARACTER_KEYS = Object.keys(CHARACTERS);
