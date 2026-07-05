@@ -27,7 +27,7 @@ window.addEventListener("keydown", (e) => {
   if (dir) { game.input[dir] = true; e.preventDefault(); }
   if (e.code === "Escape" && game.state === "playing") {
     game.state = "paused";
-    ui.showPaused();
+    ui.showPaused(game);
   } else if (e.code === "Escape" && game.state === "paused") {
     game.state = "playing";
     ui.hidePaused();
@@ -42,7 +42,7 @@ window.addEventListener("keyup", (e) => {
 window.addEventListener("blur", () => {
   if (game.state === "playing") {
     game.state = "paused";
-    ui.showPaused();
+    ui.showPaused(game);
   }
 });
 
@@ -109,7 +109,7 @@ document.getElementById("btn-resume").addEventListener("click", () => {
 document.getElementById("btn-pause-mobile").addEventListener("click", () => {
   if (game.state === "playing") {
     game.state = "paused";
-    ui.showPaused();
+    ui.showPaused(game);
   } else if (game.state === "paused") {
     game.state = "playing";
     ui.hidePaused();

@@ -311,7 +311,10 @@ function fireNova(player, stats, game) {
   game.novaPulses.push({ x: player.x, y: player.y, radius: 0, maxRadius: stats.radius, life: 0.35, color });
   for (const e of game.enemies) {
     if (dist(e.x, e.y, player.x, player.y) <= stats.radius + e.radius) {
-      game.damageEnemy(e, stats.damage * player.damageMult);
+      game.damageEnemy(e, stats.damage * player.damageMult, {
+        knockback: 260,
+        angle: angleTo(player.x, player.y, e.x, e.y),
+      });
     }
   }
   if (game.boss && dist(game.boss.x, game.boss.y, player.x, player.y) <= stats.radius + game.boss.radius) {
@@ -337,7 +340,10 @@ function updateOrbits(player, stats, dt, game) {
     for (const e of game.enemies) {
       if ((e._orbitHit ?? 0) > 0) continue;
       if (circlesOverlap(ox, oy, hitRadius, e.x, e.y, e.radius)) {
-        game.damageEnemy(e, stats.damage * player.damageMult);
+        game.damageEnemy(e, stats.damage * player.damageMult, {
+          knockback: 150,
+          angle: angleTo(player.x, player.y, e.x, e.y),
+        });
         e._orbitHit = stats.hitCooldown;
       }
     }
@@ -378,11 +384,24 @@ export class Enemy {
     this.animTime = randRange(0, 10);
     this.angle = 0;
     this.charging = false;
+    this.kbx = 0;
+    this.kby = 0;
   }
 
   update(dt, game) {
     if (this._orbitHit > 0) this._orbitHit -= dt;
     if (this.hitFlash > 0) this.hitFlash -= dt;
+    if (this.kbx !== 0 || this.kby !== 0) {
+      this.x += this.kbx * dt;
+      this.y += this.kby * dt;
+      const decay = Math.exp(-9 * dt);
+      this.kbx *= decay;
+      this.kby *= decay;
+      if (Math.abs(this.kbx) < 2 && Math.abs(this.kby) < 2) {
+        this.kbx = 0;
+        this.kby = 0;
+      }
+    }
     const p = game.player;
     const a = angleTo(this.x, this.y, p.x, p.y);
     const d = dist(this.x, this.y, p.x, p.y);
@@ -630,7 +649,7 @@ export class Projectile {
     for (const e of game.enemies) {
       if (this.hitIds.has(e.id)) continue;
       if (circlesOverlap(this.x, this.y, this.radius, e.x, e.y, e.radius)) {
-        game.damageEnemy(e, this.damage);
+        game.damageEnemy(e, this.damage, { knockback: 170, angle: Math.atan2(this.vy, this.vx) });
         this.hitIds.add(e.id);
         this.pierce -= 1;
         if (this.pierce < 0) { this.life = 0; break; }

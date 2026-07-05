@@ -1,6 +1,7 @@
 import { formatTime, clamp } from "./utils.js";
 import { getSave, PERMANENT_UPGRADES, upgradeCost, buyUpgrade } from "./save.js";
 import { STORY_TITLE, STORY_PARAGRAPHS, BOSS_LORE, EPILOGUE_TITLE, EPILOGUE_PARAGRAPHS } from "./lore.js";
+import { WEAPON_DEFS } from "./weapons.js";
 
 const el = (id) => document.getElementById(id);
 
@@ -198,8 +199,54 @@ export function showGameOver(stats) {
   overlays.gameover.classList.remove("hidden");
 }
 
-export function showPaused() {
+export function showPaused(game) {
+  if (game?.player) renderPauseBuild(game.player);
   overlays.paused.classList.remove("hidden");
+}
+
+function weaponDisplayInfo(w) {
+  const def = WEAPON_DEFS[w.key];
+  const src = w.evolved ? def.evolved : def;
+  return { icon: src.icon, name: src.name, desc: src.describe(w.level) };
+}
+
+function renderPauseBuild(player) {
+  const box = el("pause-build");
+  box.innerHTML = "";
+  for (const w of player.weapons) {
+    const info = weaponDisplayInfo(w);
+    const row = document.createElement("div");
+    row.className = "pb-weapon" + (w.evolved ? " evolved" : "");
+    const icon = document.createElement("div");
+    icon.className = "icon";
+    icon.textContent = info.icon;
+    const text = document.createElement("div");
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = `${info.name} — Lv ${w.level}${w.evolved ? " (Evolved)" : ""}`;
+    const desc = document.createElement("div");
+    desc.className = "desc";
+    desc.textContent = info.desc;
+    text.append(name, desc);
+    row.append(icon, text);
+    box.appendChild(row);
+  }
+  const stats = document.createElement("div");
+  stats.className = "pb-stats";
+  const entries = [
+    [`⚔️ +${Math.round((player.damageMult - 1) * 100)}% dmg`],
+    [`⏱️ +${Math.round((1 - player.cooldownMult) * 100)}% atk speed`],
+    [`🛡️ ${Math.round(player.armor * 100)}% reduction`],
+    [`💚 ${player.regen.toFixed(1)} regen/s`],
+    [`🧲 ${Math.round(player.magnetRadius)} pickup`],
+    [`👟 ${Math.round(player.baseSpeed)} speed`],
+  ];
+  for (const [label] of entries) {
+    const s = document.createElement("span");
+    s.textContent = label;
+    stats.appendChild(s);
+  }
+  box.appendChild(stats);
 }
 
 export function hidePaused() {
@@ -215,11 +262,35 @@ const hpText = el("hp-text");
 const xpBar = el("xp-bar");
 const timerEl = el("hud-timer");
 const levelEl = el("hud-level");
+const killsEl = el("hud-kills");
 const coresEl = el("hud-cores-value");
+const weaponsEl = el("hud-weapons");
 const bossWrap = el("boss-bar-wrap");
 const bossBar = el("boss-bar");
 const bossName = el("boss-name");
 const bossCallout = el("boss-callout");
+
+let lastBuildSig = "";
+
+function refreshWeaponChips(player) {
+  const sig = player.weapons.map((w) => `${w.key}:${w.level}:${w.evolved ? 1 : 0}`).join("|");
+  if (sig === lastBuildSig) return;
+  lastBuildSig = sig;
+  weaponsEl.innerHTML = "";
+  for (const w of player.weapons) {
+    const info = weaponDisplayInfo(w);
+    const chip = document.createElement("div");
+    chip.className = "weapon-chip" + (w.evolved ? " evolved" : "");
+    const icon = document.createElement("div");
+    icon.className = "icon";
+    icon.textContent = info.icon;
+    const lv = document.createElement("div");
+    lv.className = "lv";
+    lv.textContent = w.evolved ? "EVO" : `Lv${w.level}`;
+    chip.append(icon, lv);
+    weaponsEl.appendChild(chip);
+  }
+}
 
 export function updateHud(game) {
   const p = game.player;
@@ -228,9 +299,11 @@ export function updateHud(game) {
   xpBar.style.width = `${clamp((p.xp / p.xpToNext) * 100, 0, 100)}%`;
   timerEl.textContent = formatTime(game.time);
   levelEl.textContent = `Lv ${p.level}`;
+  killsEl.textContent = `${game.kills} slain`;
   coresEl.textContent = Math.round(
     game.time / 5 + game.kills * 0.25 + game.coresFromBosses + game.coresFromElites
   );
+  refreshWeaponChips(p);
 
   if (game.boss) {
     bossWrap.classList.remove("hidden");

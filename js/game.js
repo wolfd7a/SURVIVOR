@@ -186,10 +186,15 @@ export class Game {
     for (let i = 0; i < count; i++) this.particles.push(new Particle(x, y, color));
   }
 
-  damageEnemy(e, dmg) {
+  damageEnemy(e, dmg, opts = {}) {
     if (e.hp <= 0) return;
     e.hp -= dmg;
     e.hitFlash = 0.12;
+    if (opts.knockback) {
+      const resist = e.elite ? 0.3 : 1;
+      e.kbx += Math.cos(opts.angle) * opts.knockback * resist;
+      e.kby += Math.sin(opts.angle) * opts.knockback * resist;
+    }
     audio.hitEnemy();
     this.texts.push(new FloatingText(e.x, e.y - e.radius - 4, Math.round(dmg).toString(), "#fecaca", 13));
     if (e.hp <= 0) this.onEnemyDeath(e);

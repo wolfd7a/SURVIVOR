@@ -96,6 +96,38 @@ canvas#game {
 }
 .settings-checkbox input { accent-color: var(--accent); }
 
+.pause-build {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 460px;
+  max-width: 90vw;
+  margin-bottom: 8px;
+}
+.pause-build .pb-weapon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid #2a2a3d;
+  border-radius: 8px;
+  padding: 7px 12px;
+  text-align: left;
+}
+.pause-build .pb-weapon.evolved { border-color: var(--gold); }
+.pause-build .pb-weapon .icon { font-size: 1.3em; }
+.pause-build .pb-weapon .name { font-weight: 600; font-size: 0.9em; }
+.pause-build .pb-weapon .desc { color: var(--muted); font-size: 0.78em; }
+.pause-build .pb-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.8em;
+  margin-top: 4px;
+}
+
 .btn {
   background: #1f1f2e;
   color: var(--text);
@@ -223,6 +255,32 @@ canvas#game {
 }
 #hud-timer { font-size: 1.4em; font-weight: 700; text-shadow: 0 1px 3px #000; }
 #hud-level { color: var(--muted); font-size: 0.9em; }
+#hud-kills { color: var(--muted); font-size: 0.75em; }
+
+#hud-weapons {
+  position: absolute;
+  bottom: 14px;
+  left: 16px;
+  display: flex;
+  gap: 6px;
+}
+.weapon-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 40px;
+  padding: 4px 6px 3px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 8px;
+}
+.weapon-chip.evolved {
+  border-color: var(--gold);
+  box-shadow: 0 0 8px rgba(251,191,36,0.35);
+}
+.weapon-chip .icon { font-size: 1.15em; line-height: 1.1; }
+.weapon-chip .lv { font-size: 0.65em; color: var(--muted); }
+.weapon-chip.evolved .lv { color: var(--gold); }
 
 #hud-cores {
   position: absolute;

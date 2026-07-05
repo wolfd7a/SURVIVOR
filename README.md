@@ -125,7 +125,16 @@ there's an on-screen pause button alongside the `Esc` key.
 Big hits get a beat of **hit-stop** (a few frames of extreme slow-motion, not
 a full freeze) plus a matching screen-color flash — on a boss weak-point
 stun, a boss kill, and an elite kill — to sell impact the way most modern
-action games do.
+action games do. Weapon hits also apply directional **knockback**: bolts
+shove along their flight path, novas blast radially outward, orbs bat
+enemies away. Elites resist most of it; bosses ignore it entirely so their
+attack patterns stay authored, not physics-driven.
+
+Your current build is always visible: a HUD chip row (bottom-left) shows
+each owned weapon's level (gold-rimmed once evolved), a kill counter sits
+under the timer, and pausing shows the full loadout — every weapon's live
+stats plus your accumulated bonuses (damage, attack speed, armor, regen,
+pickup radius, move speed).
 
 ## Project layout
 
